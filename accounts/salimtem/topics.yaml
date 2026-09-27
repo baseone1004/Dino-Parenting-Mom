@@ -1,0 +1,69 @@
+# 살림템 계정 주제 목록 — 순서대로 순환. 끝나면 처음부터.
+#   title   : 글 주제 (구체적일수록 좋음)
+#   angle   : 어떤 감정/관점으로
+#   product : 상품 이름 (경험담으로 언급). 링크는 아래 link 에.
+#   link    : 쿠팡 파트너스 사이트 > 링크 생성 에서 만든 링크 붙여넣기. 비우면 링크 없이 게시.
+#
+# 조회수 설계: 공감형("나만 이래?") · 반전형("이거 사지 마") · 숫자형("한 장에 12원") · 논쟁형("A vs B") 을 섞어 둠.
+
+topics:
+  - title: 수세미 일주일마다 바꾸는 사람 vs 한 달 쓰는 사람
+    angle: 논쟁형. 나는 한 달 쓰다가 냄새 때문에 바꿈
+    product: 세미 뽑아쓰는 원데이 수세미
+    link: https://link.coupang.com/a/he5Wx9Tgyq
+  - title: 물티슈 한 장에 얼마인지 계산해 본 적 있어?
+    angle: 숫자형. 브랜드별로 3배 차이 남. 비싼 게 꼭 좋진 않았음
+    product: 탐사 클래식 물티슈 캡형 100매 10개
+    link: https://link.coupang.com/a/he5YJ7kSrY
+  - title: 설거지 제일 싫어하는 순간
+    angle: 공감형. 밥솥 내솥 닦을 때. 다들 뭐가 제일 싫어?
+  - title: 키친타월 아껴 쓰다가 포기한 이유
+    angle: 반전형. 아끼는 게 오히려 손해였음
+    product: 크리넥스 안심 3겹 키친타올
+    link: https://link.coupang.com/a/he5VEQ5joG
+  - title: 밀폐용기 20개 샀는데 쓰는 건 5개
+    angle: 실패담. 결국 정착한 건 한 종류
+    product: 글라스락 정사각 유리 밀폐용기
+    link: https://link.coupang.com/a/he5VLE2pG0
+  - title: 쿠팡에서 생활용품 살 때 나만의 기준 3개
+    angle: 숫자형. 리뷰 개수보다 보는 것
+  - title: 세탁세제 액체 vs 캡슐 vs 가루
+    angle: 논쟁형. 나는 캡슐로 갔다가 다시 돌아옴
+    product: 퍼실 디스크 캡슐세제
+    link: https://link.coupang.com/a/he5VTfnKdU
+  - title: 청소 30분을 10분으로 줄인 순서
+    angle: 시간 숫자. 순서만 바꿨는데 달라짐
+  - title: 이거 다들 알고 있었어? 전자레인지 청소법
+    angle: 반전형. 물 한 컵으로 끝남
+  - title: 주방 서랍에 안 쓰는 도구 세어봤더니 11개
+    angle: 실패담. 그 중 제일 아까운 것
+  - title: 배수구 냄새 때문에 해본 것 5가지
+    angle: 4개 실패, 1개 성공
+    product: 4BNK 스텐 싱크대 거름망
+    link: https://link.coupang.com/a/he5V0s9Atg
+  - title: 살림하면서 나만 이런가 싶은 순간
+    angle: 공감형. 청소 다 하고 나면 다시 어질러지는 것
+  - title: 마트보다 쿠팡이 싼 것 / 마트가 싼 것
+    angle: 숫자 비교. 직접 비교해서 놀란 것
+  - title: 행주 대신 쓰기 시작한 것
+    angle: 반전형. 행주 삶는 거 그만둠
+    product: 크리넥스 빨아쓰는 위생행주
+    link: https://link.coupang.com/a/he5V7uBk8i
+  - title: 빨래 개는 게 제일 싫은 이유
+    angle: 공감형. 개고 나면 또 쌓임. 다들 어떻게 해?
+  - title: 주방 후드 청소 미루다 6개월 만에 연 날
+    angle: 충격. 그 후로 한 달에 한 번
+    product: 코코즈 오븐크리너
+    link: https://link.coupang.com/a/he5WehOY1Y
+  - title: SNS 처음 시작하는 주부의 3일째
+    angle: 뭘 올려야 할지 몰라서 살림 얘기부터
+  - title: 냉장고 정리 한 번에 끝내는 순서
+    angle: 위에서 아래가 아니라 문부터
+    product: 실리쿡 하프트레이
+    link: https://link.coupang.com/a/he5WkFOuB2
+  - title: 쿠팡 파트너스 시작하고 아직 0원
+    angle: 솔직 고백. 근데 글 쓰는 게 재밌어짐
+  - title: 저녁 준비 시간 줄여준 물건 딱 하나
+    angle: 비싼 거 아님. 만 원대
+    product: 바겐슈타이거 실리콘 조리도구 2종
+    link: https://link.coupang.com/a/he5WrmdLoa

@@ -1,0 +1,8 @@
+.env
+data/
+logs/
+__pycache__/
+*.pyc
+secrets/
+*.pem
+*service-account*.json

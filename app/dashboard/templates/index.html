@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Threads 자동 게시</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+  :root {
+    --bg:#f4f5f7; --card:#ffffff; --line:#e6e8ec; --text:#17181c; --muted:#7a7f8a; --soft:#f0f2f5;
+    --accent:#111318; --accent-text:#fff; --blue:#2563eb; --green:#16a34a; --amber:#d97706; --red:#dc2626;
+    --green-bg:#e8f7ee; --amber-bg:#fff4e0; --red-bg:#fdecec; --blue-bg:#e8efff; --gray-bg:#eef0f3;
+    --radius:16px; --shadow:0 1px 2px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.04);
+  }
+  * { box-sizing:border-box; }
+  html { -webkit-text-size-adjust:100%; }
+  body { margin:0; font-family:Pretendard, -apple-system, "Segoe UI", "Malgun Gothic", sans-serif; background:var(--bg); color:var(--text); font-size:14px; line-height:1.5; }
+  a { color:inherit; }
+  button, .btn { font:inherit; border:1px solid var(--line); background:#fff; color:var(--text); padding:8px 14px; border-radius:10px; cursor:pointer; font-size:13px; font-weight:600; transition:.15s; white-space:nowrap; }
+  button:hover, .btn:hover { background:var(--soft); }
+  button.primary { background:var(--accent); color:var(--accent-text); border-color:var(--accent); }
+  button.primary:hover { opacity:.88; }
+  button.blue { background:var(--blue); color:#fff; border-color:var(--blue); }
+  button.ghost { background:transparent; border-color:transparent; color:var(--muted); }
+  button.danger { color:var(--red); }
+  button.sm { padding:5px 10px; font-size:12px; border-radius:8px; }
+  form.inline { display:inline; }
+  input[type=text], input[type=password], select, textarea { font:inherit; padding:9px 12px; border:1px solid var(--line); border-radius:10px; background:#fff; width:100%; }
+  textarea { min-height:150px; line-height:1.6; resize:vertical; }
+
+  /* ---- top bar ---- */
+  .top { position:sticky; top:0; z-index:10; background:rgba(255,255,255,.9); backdrop-filter:blur(10px); border-bottom:1px solid var(--line); }
+  .top-in { max-width:1180px; margin:0 auto; padding:12px 20px; display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .brand { display:flex; align-items:center; gap:10px; font-weight:800; font-size:17px; }
+  .brand .logo { width:32px; height:32px; border-radius:10px; background:var(--accent); color:#fff; display:grid; place-items:center; font-size:17px; }
+  .top .meta { color:var(--muted); font-size:12px; }
+  .top .right { margin-left:auto; display:flex; align-items:center; gap:10px; }
+  .mode-pill { display:inline-flex; align-items:center; gap:8px; padding:7px 12px 7px 10px; border-radius:999px; font-weight:700; font-size:13px; }
+  .mode-pill .dot { width:8px; height:8px; border-radius:50%; }
+  .mode-pill.test { background:var(--amber-bg); color:#8a4b00; } .mode-pill.test .dot { background:var(--amber); }
+  .mode-pill.live { background:var(--red-bg); color:#8f1d1d; } .mode-pill.live .dot { background:var(--red); box-shadow:0 0 0 4px rgba(220,38,38,.15); }
+
+  main { max-width:1180px; margin:0 auto; padding:20px; }
+  .flash { background:var(--blue-bg); color:#1e3a8a; padding:12px 16px; border-radius:12px; margin-bottom:16px; font-weight:600; }
+
+  /* ---- summary ---- */
+  .summary { display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); gap:12px; margin-bottom:20px; }
+  .sum { background:var(--card); border-radius:var(--radius); padding:16px 18px; box-shadow:var(--shadow); text-decoration:none; display:block; border:2px solid transparent; }
+  .sum:hover { border-color:var(--line); }
+  .sum.active { border-color:var(--accent); }
+  .sum .n { font-size:28px; font-weight:800; letter-spacing:-.5px; line-height:1.1; }
+  .sum .l { color:var(--muted); font-size:12px; margin-top:4px; display:flex; align-items:center; gap:6px; }
+  .sum .l i { width:8px; height:8px; border-radius:50%; display:inline-block; }
+  i.draft { background:#9aa0ab; } i.scheduled { background:var(--blue); } i.published { background:var(--green); } i.failed { background:var(--red); }
+
+  h2 { font-size:15px; font-weight:800; margin:0 0 12px; display:flex; align-items:center; gap:10px; }
+  h2 .sub { color:var(--muted); font-weight:500; font-size:12px; }
+  section { margin-bottom:24px; }
+
+  /* ---- account cards ---- */
+  .accounts { display:grid; grid-template-columns:repeat(auto-fit, minmax(340px,1fr)); gap:14px; }
+  .acc { background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px; }
+  .acc-head { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+  .avatar { width:44px; height:44px; border-radius:14px; display:grid; place-items:center; font-weight:800; font-size:15px; color:#fff; flex-shrink:0; }
+  .acc-head .name { font-weight:800; font-size:16px; }
+  .acc-head .handle { color:var(--muted); font-size:12px; }
+  .acc-head .right { margin-left:auto; }
+  .chip { display:inline-flex; align-items:center; gap:5px; padding:4px 9px; border-radius:999px; font-size:12px; font-weight:700; }
+  .chip.ok { background:var(--green-bg); color:#166534; } .chip.warn { background:var(--amber-bg); color:#92400e; } .chip.bad { background:var(--red-bg); color:#991b1b; } .chip.gray { background:var(--gray-bg); color:#4b5563; } .chip.blue { background:var(--blue-bg); color:#1e40af; }
+  .kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:12px 0; }
+  .kpi { background:var(--soft); border-radius:12px; padding:10px 10px; text-align:center; }
+  .kpi .v { font-size:18px; font-weight:800; } .kpi .k { font-size:11px; color:var(--muted); }
+  .acc .rows { display:grid; gap:6px; font-size:13px; color:#3b3f47; }
+  .acc .rows div { display:flex; justify-content:space-between; gap:10px; }
+  .acc .rows span:last-child { font-weight:600; color:var(--text); }
+  .acc .actions { display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; }
+  details.token { margin-top:10px; }
+  details.token summary { cursor:pointer; color:var(--muted); font-size:12px; list-style:none; }
+  details.token summary::before { content:"▸ "; } details.token[open] summary::before { content:"▾ "; }
+  details.token .form { display:grid; gap:8px; margin-top:10px; padding:12px; background:var(--soft); border-radius:12px; }
+  details.token .form .row { display:flex; gap:8px; }
+
+  /* ---- posts ---- */
+  .toolbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
+  .tabs { display:flex; gap:4px; background:var(--gray-bg); padding:4px; border-radius:12px; }
+  .tabs a { padding:6px 12px; border-radius:9px; text-decoration:none; font-size:13px; font-weight:600; color:var(--muted); }
+  .tabs a.on { background:#fff; color:var(--text); box-shadow:0 1px 3px rgba(0,0,0,.08); }
+  .toolbar .grow { flex:1; }
+  .posts { display:grid; grid-template-columns:repeat(auto-fill, minmax(360px,1fr)); gap:14px; }
+  .post { background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px; display:flex; flex-direction:column; gap:10px; }
+  .post .ph { display:flex; align-items:center; gap:10px; }
+  .post .ph .avatar { width:34px; height:34px; border-radius:10px; font-size:12px; }
+  .post .ph .who { font-weight:700; font-size:13px; }
+  .post .ph .when { color:var(--muted); font-size:12px; }
+  .post .ph .st { margin-left:auto; }
+  .st { font-size:11px; font-weight:800; padding:3px 9px; border-radius:999px; letter-spacing:.2px; }
+  .st.draft { background:var(--gray-bg); color:#4b5563; } .st.scheduled { background:var(--blue-bg); color:#1e40af; } .st.published { background:var(--green-bg); color:#166534; } .st.failed { background:var(--red-bg); color:#991b1b; }
+  .post .topic { color:var(--muted); font-size:12px; }
+  .post .body { white-space:pre-wrap; line-height:1.65; font-size:14px; }
+  .post .body::first-line { font-weight:800; }
+  .post .link { font-size:12px; color:#1e40af; background:var(--blue-bg); padding:8px 10px; border-radius:10px; word-break:break-all; }
+  .post .link.none { color:var(--muted); background:var(--soft); }
+  .post .err { font-size:12px; color:#991b1b; background:var(--red-bg); padding:8px 10px; border-radius:10px; }
+  .post .metrics { display:flex; gap:14px; color:var(--muted); font-size:12px; font-weight:600; }
+  .post .pa { display:flex; gap:6px; flex-wrap:wrap; margin-top:auto; padding-top:4px; }
+  details.edit summary { cursor:pointer; color:var(--muted); font-size:12px; }
+  .empty { background:var(--card); border-radius:var(--radius); padding:36px; text-align:center; color:var(--muted); box-shadow:var(--shadow); }
+
+  /* ---- ideas / bottom ---- */
+  .idea { display:flex; align-items:center; gap:12px; background:var(--card); border-radius:12px; padding:12px 14px; box-shadow:var(--shadow); margin-bottom:8px; }
+  .idea .t { font-weight:700; } .idea .a { color:var(--muted); font-size:12px; }
+  .idea .btns { margin-left:auto; display:flex; gap:6px; }
+  .two { display:grid; grid-template-columns:1fr 1.4fr; gap:14px; }
+  @media (max-width:900px){ .two { grid-template-columns:1fr; } .kpis { grid-template-columns:repeat(4,1fr); } }
+  .box { background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px; }
+  .sched { display:grid; gap:6px; font-size:13px; }
+  .sched div { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px dashed var(--line); }
+  .sched div:last-child { border:0; }
+  .log { font-family:ui-monospace, Consolas, monospace; font-size:12px; max-height:240px; overflow:auto; color:#3b3f47; }
+  .log div { padding:3px 0; border-bottom:1px dotted var(--line); }
+  .log .ERROR { color:var(--red); } .log .WARN { color:var(--amber); }
+  .help { font-size:12px; color:var(--muted); margin-top:10px; line-height:1.7; }
+  .help code { background:var(--soft); padding:1px 6px; border-radius:6px; }
+</style>
+</head>
+<body>
+<div class="top"><div class="top-in">
+  <div class="brand"><div class="logo">🧵</div>Threads·페이스북·인스타 자동 게시</div>
+  <div class="meta">매일 {{ cfg.posting.times|join(' · ') }} &nbsp;|&nbsp; 계정당 하루 {{ cfg.posting.max_per_day }}회 &nbsp;|&nbsp; 링크는 댓글 &nbsp;|&nbsp; AI: {{ 'Claude Code' if cfg.ai.backend == 'headless' else 'Claude API' }}</div>
+  <div class="right">
+    <span class="mode-pill {{ mode }}"><span class="dot"></span>{{ '실전 모드 · 실제 게시 중' if mode == 'live' else '테스트 모드 · 초안만 저장' }}</span>
+    {% if mode == 'test' %}
+    <form method="post" action="/mode" class="inline" onsubmit="return confirm('실전 모드로 바꾸면 스케줄 시각에 Threads 에 실제로 게시됩니다. 시작할까요?')">
+      <input type="hidden" name="mode" value="live">
+      <button class="primary">실전 시작</button>
+    </form>
+    {% endif %}
+  </div>
+</div></div>
+
+<main>
+  {% with msgs = get_flashed_messages() %}{% for m in msgs %}<div class="flash">{{ m }}</div>{% endfor %}{% endwith %}
+
+  <div class="summary">
+    {% for key, label in labels.items() %}
+    <a class="sum {{ 'active' if filter_status == key }}" href="/?status={{ key }}{% if filter_account %}&account={{ filter_account }}{% endif %}">
+      <div class="n">{{ stats.total.get(key, 0) }}</div><div class="l"><i class="{{ key }}"></i>{{ label }}</div>
+    </a>
+    {% endfor %}
+    <div class="sum"><div class="n">{{ accounts|map(attribute='views')|sum }}</div><div class="l">👁 누적 조회수</div></div>
+  </div>
+
+  <section>
+    <h2>계정 <span class="sub">{{ accounts|length }}개 운영 중</span></h2>
+    <div class="accounts">
+      {% for a in accounts %}
+      {% set colors = ['#f4a261', '#7cb342', '#7fb3c8', '#9575cd', '#e07a8c'] %}
+      <div class="acc">
+        <div class="acc-head">
+          <div class="avatar" style="background:{{ colors[loop.index0 % 5] }}">{{ a.name[:2] }}</div>
+          <div><div class="name">{{ a.name }}</div><div class="handle">{% if a.token.username %}@{{ a.token.username }}{% else %}{{ a.id }} · Threads 미연결{% endif %}</div></div>
+          <div class="right">
+            {% if not a.token.has %}<span class="chip bad">🧵 토큰 없음</span>
+            {% elif a.token.warn %}<span class="chip warn">🧵 만료 {{ a.token.days_left }}일 전</span>
+            {% else %}<span class="chip ok">🧵 연결됨</span>{% endif %}
+            {% if a.facebook_page_id %}<span class="chip ok">📘 {{ a.facebook_page_name or '연결됨' }}</span>{% else %}<span class="chip bad">📘 미연결</span>{% endif %}
+            {% if a.instagram_business_id %}<span class="chip ok">📸 연결됨</span>{% else %}<span class="chip bad">📸 미연결</span>{% endif %}
+          </div>
+        </div>
+        <div class="kpis">
+          <div class="kpi"><div class="v">{{ a.today }}<span style="font-size:12px;color:var(--muted)">/{{ cfg.posting.max_per_day }}</span></div><div class="k">오늘 게시</div></div>
+          <div class="kpi"><div class="v">{{ a.counts.published }}</div><div class="k">게시 완료</div></div>
+          <div class="kpi"><div class="v">{{ a.counts.draft }}</div><div class="k">초안</div></div>
+          <div class="kpi"><div class="v">{{ a.views }}</div><div class="k">조회수</div></div>
+        </div>
+        <div class="rows">
+          <div><span>다음 게시</span><span>{{ a.next_run }}</span></div>
+          <div><span>주제 순환</span><span>{{ a.topic_idx + 1 }} / {{ a.topics_total }}번째</span></div>
+          <div><span>쿠팡 링크 있는 주제</span><span>{{ a.topics_with_link }} / {{ a.topics_total }}개 {% if not a.link_allowed %}<span class="chip gray">링크 OFF</span>{% endif %}</span></div>
+          <div><span>토큰 만료</span><span>{{ a.token.expires_at[:10] if a.token.expires_at else '-' }}</span></div>
+        </div>
+        <div class="actions">
+          <form method="post" action="/generate/{{ a.id }}" class="inline"><button class="primary">✍️ 초안 1개</button></form>
+          <form method="post" action="/generate/{{ a.id }}/batch" class="inline" onsubmit="return confirm('{{ monday }}(월)까지 슬롯 {{ a.slots_to_monday }}개 분량을 미리 만들까요? 1개당 1~2분 걸립니다.')">
+            <input type="hidden" name="n" value="{{ a.slots_to_monday }}"><input type="hidden" name="schedule" value="0">
+            <button>📚 {{ monday }}(월)까지 {{ a.slots_to_monday }}개 미리 만들기</button></form>
+          <form method="post" action="/posts/schedule_all/{{ a.id }}" class="inline" onsubmit="return confirm('초안 {{ a.counts.draft }}개를 전부 예약할까요?')"><button {% if not a.counts.draft %}disabled{% endif %}>⏰ 초안 전부 예약 ({{ a.counts.draft }})</button></form>
+          <form method="post" action="/ideas/collect/{{ a.id }}" class="inline"><button>💡 글감</button></form>
+          <a class="btn" href="/?account={{ a.id }}">글 보기</a>
+        </div>
+        {% if a.batch %}<div class="chip blue" style="margin-top:10px">⏳ 생성 중 {{ a.batch }} — 새로고침하면 갱신</div>{% endif %}
+        <details class="token">
+          <summary>토큰 입력 / 교체 / 갱신</summary>
+          <div class="form">
+            <form method="post" action="/accounts/{{ a.id }}/token">
+              <div class="row">
+                <input type="password" name="token" placeholder="Meta 개발자 페이지에서 받은 액세스 토큰 붙여넣기">
+                <select name="kind" style="width:auto"><option value="long">장기(60일)</option><option value="short">단기→장기 교환</option></select>
+                <button class="blue">저장</button>
+              </div>
+            </form>
+            {% if a.token.has %}<form method="post" action="/accounts/{{ a.id }}/refresh"><button class="sm">지금 갱신</button></form>{% endif %}
+            <div class="help">발급 방법: <code>scripts/setup_token.md</code> · 만료 7일 전부터 매일 새벽 자동 갱신</div>
+          </div>
+        </details>
+        <details class="token">
+          <summary>페이스북 페이지 연결 (인스타그램도 같이 연결됨)</summary>
+          <div class="form">
+            {% if a.fb_pending_pages %}
+            <form method="post" action="/accounts/{{ a.id }}/facebook/connect" class="row">
+              <select name="page_id" style="width:auto">
+                {% for p in a.fb_pending_pages %}<option value="{{ p.id }}">{{ p.name }}{% if p.instagram_business_account %} (인스타 연결됨){% endif %}</option>{% endfor %}
+              </select>
+              <button class="blue">이 페이지로 연결</button>
+            </form>
+            {% else %}
+            <form method="post" action="/accounts/{{ a.id }}/facebook/fetch" class="row">
+              <input type="password" name="user_token" placeholder="Meta 개발자 앱에서 받은 사용자 액세스 토큰 붙여넣기">
+              <button class="blue">페이지 조회</button>
+            </form>
+            {% endif %}
+            <div class="help">발급 방법: <code>scripts/setup_facebook.md</code> · 사용자 토큰으로 관리 중인 페이지 목록을 조회한 뒤 하나를 선택합니다</div>
+          </div>
+        </details>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="help">계정 추가: <code>accounts/&lt;id&gt;/</code> 폴더(rules.md · profile.md · topics.yaml) 만들고 <code>config.yaml</code> 의 accounts 에 추가 후 재시작
+      <form method="post" action="/reload" class="inline"><button class="sm ghost">config 다시 읽기</button></form></div>
+  </section>
+
+  {% if ideas %}
+  <section>
+    <h2>💡 글감 후보 <span class="sub">승인하면 다음 게시 때 주제 목록보다 먼저 사용</span></h2>
+    {% for i in ideas %}
+    <div class="idea">
+      <div><div class="t">{{ i.title }}</div><div class="a">{{ i.angle or '' }}{% if i.product %} · 상품: {{ i.product }}{% endif %} · {{ i.account_id }}</div></div>
+      <div class="btns">
+        <form method="post" action="/ideas/{{ i.id }}/approve" class="inline"><button class="primary sm">승인</button></form>
+        <form method="post" action="/ideas/{{ i.id }}/reject" class="inline"><button class="sm">버림</button></form>
+      </div>
+    </div>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  <section>
+    <h2>글 <span class="sub">{{ posts|length }}개 표시</span></h2>
+    <div class="toolbar">
+      <div class="tabs">
+        <a class="{{ 'on' if not filter_status }}" href="/?{% if filter_account %}account={{ filter_account }}{% endif %}">전체</a>
+        {% for key, label in labels.items() %}<a class="{{ 'on' if filter_status == key }}" href="/?status={{ key }}{% if filter_account %}&account={{ filter_account }}{% endif %}">{{ label }}</a>{% endfor %}
+      </div>
+      <div class="tabs">
+        <a class="{{ 'on' if not filter_account }}" href="/?{% if filter_status %}status={{ filter_status }}{% endif %}">모든 계정</a>
+        {% for a in accounts %}<a class="{{ 'on' if filter_account == a.id }}" href="/?account={{ a.id }}{% if filter_status %}&status={{ filter_status }}{% endif %}">{{ a.name }}</a>{% endfor %}
+      </div>
+      <div class="grow"></div>
+      <div class="tabs">
+        <a class="{{ 'on' if order != 'views' }}" href="/?order=recent">최신순</a>
+        <a class="{{ 'on' if order == 'views' }}" href="/?order=views&status=published">조회수순</a>
+      </div>
+      <form method="post" action="/insights" class="inline"><button class="sm">📊 성과 수집</button></form>
+    </div>
+
+    {% if not posts %}
+    <div class="empty">아직 글이 없어요. 계정 카드의 <b>✍️ 초안 1개 만들기</b>를 눌러보세요. (1~2분 걸립니다)</div>
+    {% endif %}
+
+    <div class="posts">
+      {% for p in posts %}
+      {% set ai = (accounts|selectattr('id','equalto',p.account_id)|list) %}
+      {% set an = ai[0].name if ai else p.account_id %}
+      {% set ci = (accounts|map(attribute='id')|list).index(p.account_id) if ai else 0 %}
+      <div class="post">
+        <div class="ph">
+          <div class="avatar" style="background:{{ ['#f4a261','#7cb342','#7fb3c8','#9575cd','#e07a8c'][ci % 5] }}">{{ an[:2] }}</div>
+          <div><div class="who">{{ an }}</div><div class="when">#{{ p.id }} · {{ p.created_at[5:16] }}{% if p.published_at %} · 게시 {{ p.published_at[5:16] }}{% endif %}</div></div>
+          <span class="st {{ p.status }}">{{ labels[p.status] }}{% if p.status == 'scheduled' and eta.get(p.id) %} · {{ eta[p.id] }}{% endif %}</span>
+        </div>
+        <div class="topic">주제 · {{ p.topic }}</div>
+        <div class="body">{{ p.body }}</div>
+        {% if p.link %}<div class="link">💬 댓글로 달림: {{ p.link.split('\n')[0] }}</div>
+        {% else %}<div class="link none">🔗 링크 없음 (topics.yaml 의 link 비어 있음)</div>{% endif %}
+        {% if p.status in ('published','failed') %}
+        <div class="rows" style="font-size:12px">
+          <div><span>🧵 Threads</span><span>{% if p.threads_post_id %}<span class="chip ok">게시됨</span>{% elif p.error %}<span class="chip bad">실패</span>{% else %}<span class="chip gray">대기</span>{% endif %}</span></div>
+          <div><span>📘 Facebook</span><span>
+            {% if p.facebook_post_id %}<span class="chip ok">게시됨</span>
+            {% elif p.facebook_error %}<span class="chip bad">실패</span> <form method="post" action="/posts/{{ p.id }}/retry/facebook" class="inline"><button class="sm">재시도</button></form>
+            {% else %}<span class="chip gray">대기</span>{% endif %}
+          </span></div>
+          <div><span>📸 Instagram</span><span>
+            {% if p.instagram_post_id %}<span class="chip ok">게시됨</span>
+            {% elif p.instagram_error %}<span class="chip bad">실패</span> <form method="post" action="/posts/{{ p.id }}/retry/instagram" class="inline"><button class="sm">재시도</button></form>
+            {% else %}<span class="chip gray">대기</span>{% endif %}
+          </span></div>
+        </div>
+        {% if p.facebook_error %}<div class="err">📘 {{ p.facebook_error }}</div>{% endif %}
+        {% if p.instagram_error %}<div class="err">📸 {{ p.instagram_error }}</div>{% endif %}
+        {% endif %}
+        {% if p.status == 'published' %}<div class="metrics"><span>👁 {{ p.views or 0 }}</span><span>❤️ {{ p.likes or 0 }}</span><span>💬 {{ p.replies or 0 }}</span><span>🔁 {{ p.reposts or 0 }}</span></div>{% endif %}
+        {% if p.error %}<div class="err">🧵 {{ p.error }}</div>{% endif %}
+        <details class="edit"><summary>✏️ 글 수정</summary>
+          <form method="post" action="/posts/{{ p.id }}/edit" style="display:grid;gap:8px;margin-top:8px">
+            <textarea name="body">{{ p.body }}</textarea>
+            <input type="text" name="link" value="{{ p.link or '' }}" placeholder="댓글에 달 링크 줄 (비우면 링크 없음)">
+            <div><button class="sm blue">저장</button></div>
+          </form>
+        </details>
+        <div class="pa">
+          {% if p.status != 'published' %}
+          <form method="post" action="/posts/{{ p.id }}/publish" class="inline" onsubmit="return confirm('지금 Threads 에 실제로 게시할까요?')"><button class="primary sm">🚀 지금 게시</button></form>
+          {% if p.status != 'scheduled' %}<form method="post" action="/posts/{{ p.id }}/schedule" class="inline"><button class="sm">⏰ 다음 시각에 예약</button></form>
+          {% else %}<form method="post" action="/posts/{{ p.id }}/draft" class="inline"><button class="sm">예약 취소</button></form>{% endif %}
+          {% endif %}
+          <form method="post" action="/posts/{{ p.id }}/delete" class="inline" onsubmit="return confirm('삭제할까요?')"><button class="sm ghost danger">삭제</button></form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="two">
+    <div class="box">
+      <h2>⏰ 다음 실행</h2>
+      <div class="sched">{% for j in jobs %}<div><span>{{ j.name }}</span><span>{{ j.next }}</span></div>{% endfor %}</div>
+    </div>
+    <div class="box">
+      <h2>로그</h2>
+      <div class="log">{% for l in logs %}<div class="{{ l.level }}">{{ l.ts[5:] }} {% if l.account_id %}[{{ l.account_id }}] {% endif %}{{ l.message }}</div>{% endfor %}</div>
+    </div>
+  </section>
+</main>
+</body>
+</html>

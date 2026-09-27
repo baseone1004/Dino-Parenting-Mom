@@ -1,0 +1,124 @@
+# =====================================================================
+#  Threads 자동 게시 설정
+#  - 대시보드(설정 탭)에서 바꾼 값(게시 모드 등)은 DB에 저장되어 이 파일보다 우선합니다.
+# =====================================================================
+
+ai:
+  # headless : 설치된 Claude Code(구독)를 `claude -p` 로 호출 (추가 비용 없음)
+  # api      : Anthropic API 키 사용 (.env 의 ANTHROPIC_API_KEY, 종량제)
+  backend: headless
+  # api 모드에서 사용할 모델
+  model: claude-opus-5
+  # headless 모드에서 사용할 모델 (비워두면 Claude Code 기본값)
+  headless_model: ""
+  timeout_sec: 240
+  # 글 생성 후 규칙 파일 기준으로 한 번 더 자가 검수할지
+  self_review: true
+
+posting:
+  # test : 글만 만들어 초안으로 저장 (실제 게시 안 함)  ← 처음 며칠은 이 상태로 두세요
+  # live : 실제로 Threads 에 게시
+  mode: test
+  # 매일 게시 시각 (24시간제). 국내 스레드 활동 피크: 출근/등원 후 아침, 점심, 밤 9~11시
+  times: ["08:00", "12:30", "21:00"]
+  # 봇 패턴 완화용 무작위 지연 (분). 각 시각에 0~N분 사이로 늦게 실행
+  jitter_minutes: 7
+  # 계정당 하루 최대 게시 수 (영상 권고: 3~5회, 초과 시 계정 정지 위험)
+  max_per_day: 3
+  # 게시 실패 시 재시도 횟수
+  retry: 3
+  # 글 본문 최대 글자수 (Threads 제한 500자, 링크 여유 포함)
+  max_chars: 420
+  # 쿠팡 링크 위치: reply(첫 댓글, 노출 유지 — 권장) | body(본문 끝 한 줄) | none
+  # 본문에 외부 링크가 있으면 스레드 노출이 줄어드는 경향이 있어 댓글에 답니다. (토큰에 threads_manage_replies 권한 필요)
+  link_placement: reply
+
+coupang:
+  enabled: true
+  # Open API 사용 여부. API 키는 파트너스 "최종 승인" 후에만 발급되므로, 그 전에는 false 로 두고
+  # 파트너스 사이트 > 링크 생성 에서 만든 링크를 topics.yaml 의 link: 에 직접 넣으세요.
+  use_api: false
+  # 파트너스 서브 ID (채널 구분용, 영문/숫자)
+  sub_id: threads
+  # 링크 앞에 붙는 안내 문구 (댓글에 달릴 때)
+  link_prefix: "내가 쓰는 건 이거 👉 "
+  # 파트너스 고지 문구 (법적 필수, 글 또는 프로필에 있어야 함)
+  disclosure: "이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다."
+
+trend:
+  # 글감 찾기: Google 뉴스 RSS(키 불필요)에서 키워드별 헤드라인 수집 → AI 가 주제 후보 제안
+  enabled: true
+  # 매주 월요일 08:00 자동 수집 (대시보드에서 수동 실행도 가능)
+  cron: "0 8 * * mon"
+  headlines_per_keyword: 8
+
+toss:
+  # 토스쇼핑 쉐어링크 — 아직 신청/승인 전이면 false 로 유지. 승인 후 true 로 바꾸고
+  # .env 에 TOSS_ACCESS_KEY / TOSS_SECRET_KEY / TOSS_PUBLISHER_ID 입력, scripts/setup_toss.md 참고
+  enabled: false
+  # true 면 app/toss.py 로 상품ID(tacaItemId) → 링크 자동 발급. false 면 topics.yaml 의 link 에 직접 붙여넣기 (쿠팡과 동일 방식)
+  use_api: false
+  sub_tag: threads
+
+facebook:
+  enabled: true
+  # 링크는 항상 댓글로만 붙임 (본문에 링크가 있으면 페이스북이 미리보기 썸네일을 자동으로 붙여 노출이 줄어드는 경향)
+
+instagram:
+  enabled: true
+  # 카드뉴스 장수 (제목 1장 + 본문 요약 N-1장)
+  cards_per_post: 5
+
+dashboard:
+  # 내 컴퓨터에서만 볼 때: 127.0.0.1 / 서버(클라우드)에서 외부 접속 허용: 0.0.0.0
+  host: 0.0.0.0
+  port: 5000
+  # 비밀번호를 넣으면 대시보드 접속 시 로그인 창이 뜸 (아이디 admin). 서버에 올릴 땐 반드시 설정.
+  password: "aegi-salim-2026"
+  # 인스타그램 카드뉴스 이미지를 공개 URL로 서빙하기 위한 기본 주소 (예: http://1.2.3.4:5000)
+  # 비워두면 인스타그램 실전 게시 불가 (로컬 PC는 외부에서 이미지에 접근할 수 없으므로 클라우드 서버 배포 후 설정)
+  public_base_url: ""
+
+# 토큰 만료 N일 전부터 대시보드 경고 + 자동 갱신 시도
+token_warn_days: 7
+
+# 성과 측정 → 학습 루프
+insights:
+  enabled: true
+  # 매일 이 시각에 최근 30일 게시글의 조회수/좋아요/댓글을 Threads 에서 가져옴
+  cron: "0 2 * * *"
+  # 글 생성 시 "잘 된 글" 상위 N개를 예시로 넣어 스타일을 강화 (조회수 기준, 0이면 사용 안 함)
+  top_examples: 3
+
+accounts:
+  - id: aegitem                 # accounts/aegitem/ 폴더
+    name: "육아템"
+    enabled: true
+    topic_order: sequential
+    started_at: "2026-09-22"    # 이 날짜 + link_after_days 이전에는 링크 없이 경험담만
+    link_after_days: 0     # 0 = 처음부터 쿠팡 링크 댓글 달기
+    trend_keywords: ["육아템", "아기용품", "육아 꿀팁"]
+
+  - id: salimtem                # accounts/salimtem/ 폴더
+    name: "살림템"
+    enabled: true
+    topic_order: sequential
+    started_at: "2026-09-22"
+    link_after_days: 0     # 0 = 처음부터 쿠팡 링크 댓글 달기
+    trend_keywords: ["살림템", "주방용품", "생활용품 추천"]
+
+  - id: pettem                  # accounts/pettem/ 폴더
+    name: "반려템"
+    enabled: true
+    topic_order: sequential
+    started_at: "2026-09-27"
+    link_after_days: 14    # topics.yaml 의 link 가 아직 비어 있음 — 파트너스 승인 후 채우고 시작
+    trend_keywords: ["강아지용품", "반려동물용품", "펫템 추천"]
+
+  - id: jachwitem                # accounts/jachwitem/ 폴더
+    name: "자취템"
+    enabled: true
+    topic_order: sequential
+    started_at: "2026-09-27"
+    link_after_days: 14    # topics.yaml 의 link 가 아직 비어 있음 — 파트너스 승인 후 채우고 시작
+    trend_keywords: ["자취템", "원룸 살림", "1인가구 아이템"]
