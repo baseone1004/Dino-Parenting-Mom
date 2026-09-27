@@ -122,3 +122,11 @@ accounts:
     started_at: "2026-09-27"
     link_after_days: 14    # topics.yaml 의 link 가 아직 비어 있음 — 파트너스 승인 후 채우고 시작
     trend_keywords: ["자취템", "원룸 살림", "1인가구 아이템"]
+
+  - id: kkultem                  # accounts/kkultem/ 폴더 (토스쇼핑 쉐어링크 전용)
+    name: "꿀템로그"
+    enabled: true
+    topic_order: sequential
+    started_at: "2026-09-27"
+    link_after_days: 14    # topics.yaml 의 link 가 아직 비어 있음 — 토스/쿠팡 승인 후 채우고 시작
+    trend_keywords: ["가성비템", "생활꿀템", "직장인 필수템"]
