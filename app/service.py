@@ -6,7 +6,7 @@ import logging
 import time
 from datetime import date, datetime, timedelta
 
-from app import store, coupang, threads_api, facebook_api, instagram_api, slides_cards
+from app import store, coupang, threads_api, facebook_api, instagram_api, slides_cards, telegram_notify
 from app.config import cfg, account_cfg, env
 from app.generator import generate_post, build_card_slides
 
@@ -326,8 +326,17 @@ def publish_post(post_id: int) -> bool:
         store.update_post(post_id, status=store.FAILED, error=last_err[:500], attempts=retries)
         store.log("ERROR", f"#{post_id} 게시 최종 실패", account_id)
 
-    publish_facebook(post_id)
-    publish_instagram(post_id)
+    fb_ok = publish_facebook(post_id)
+    ig_ok = publish_instagram(post_id)
+
+    acc_name = (account_cfg(account_id) or {}).get("name", account_id)
+    mark = lambda ok: "✅" if ok else "❌"
+    title = post.get("topic", "")[:40]
+    telegram_notify.send(
+        f"{mark(threads_ok)} {acc_name} 게시 결과\n"
+        f"제목: {title}\n"
+        f"Threads {mark(threads_ok)} · Facebook {mark(fb_ok)} · Instagram {mark(ig_ok)}"
+    )
     return threads_ok
 
 

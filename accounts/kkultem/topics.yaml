@@ -5,20 +5,23 @@
 #   link    : 쿠팡 파트너스(또는 토스쇼핑 쉐어링크) 에서 만든 링크 붙여넣기. 비우면 링크 없이 게시.
 #
 # 팁: 처음 2주(config 의 link_after_days)는 링크가 붙지 않으니 그동안 링크를 천천히 채워도 됨.
+# 방침: 식품/건강기능식품 금지. 생활용품·주방용품 위주(토스 쉐어링크 프로모션 상품 카테고리 기준).
 
 topics:
   - title: 월급 받고 나를 위해 처음 산 것
     angle: 며칠 고민하다 결국 지름
   - title: 세일 뜬 거 보고 3일 고민하다 놓친 물건
     angle: 지금도 가끔 생각남
-    product: 무선 이어폰
+    product: 인덕션 스텐 냄비세트
+    link: https://toss.shopping/_m/rXxZ6TBz
   - title: SNS 처음 시작하는데 뭘 올려야 할지 몰라서 며칠 고민한 이야기
     angle: 완벽하게 하려다 아무것도 못 올림
   - title: 광고인 줄 모르고 샀다가 실망한 물건
     angle: 후기만 믿었는데 나한텐 안 맞았음
   - title: 가격표 보고 계산부터 하는 습관 생긴 계기
     angle: 하루에 얼마 꼴인지 따지게 됨
-    product: 정수기 필터
+    product: 양면 도마
+    link: https://toss.shopping/_m/PjJvDbSq
   - title: 기대 안 했는데 의외로 좋았던 물건
     angle: 싸구려인 줄 알았는데 아니었음
   - title: 제휴마케팅 처음 시작하고 아직 0원인 이야기
@@ -27,7 +30,8 @@ topics:
     angle: 반품하기도 애매해서 그냥 씀
   - title: 한 달 써보고 정착한 생활용품
     angle: 여러 개 써보고 결국 여기로 돌아옴
-    product: 무선 청소기 필터
+    product: 스테인리스 후라이팬
+    link: https://toss.shopping/_m/FUVyhvWf
   - title: 리뷰 많다고 믿고 샀다가 실패한 날
     angle: 리뷰 많은 거랑 나한테 맞는 건 다른 거였음
   - title: 이번 달 카드값 보고 놀란 날
