@@ -78,7 +78,7 @@ dashboard:
   password: "aegi-salim-2026"
   # 인스타그램 카드뉴스 이미지를 공개 URL로 서빙하기 위한 기본 주소 (예: http://1.2.3.4:5000)
   # 비워두면 인스타그램 실전 게시 불가 (로컬 PC는 외부에서 이미지에 접근할 수 없으므로 클라우드 서버 배포 후 설정)
-  public_base_url: ""
+  public_base_url: "http://3.37.142.94:5000"
 
 # 토큰 만료 N일 전부터 대시보드 경고 + 자동 갱신 시도
 token_warn_days: 7
