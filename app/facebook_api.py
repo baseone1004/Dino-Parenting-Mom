@@ -46,11 +46,9 @@ def comment_on_post(post_id: str, page_token: str, message: str) -> str:
 
 
 def publish_with_link(page_id: str, page_token: str, body: str, link_line: str | None) -> str:
-    """본문 게시 후, 있으면 링크를 댓글로 답니다. 페이지 게시물 id 반환."""
-    post_id = publish_feed_post(page_id, page_token, body)
-    if link_line:
-        comment_on_post(post_id, page_token, link_line)
-    return post_id
+    """링크가 있으면 본문 끝에 붙여서 게시 (댓글 권한(pages_manage_engagement) 불필요). 페이지 게시물 id 반환."""
+    message = f"{body}\n\n{link_line}" if link_line else body
+    return publish_feed_post(page_id, page_token, message)
 
 
 def upload_unpublished_photo(page_id: str, page_token: str, image_url: str) -> str:
@@ -61,11 +59,10 @@ def upload_unpublished_photo(page_id: str, page_token: str, image_url: str) -> s
 def publish_multi_photo_with_link(page_id: str, page_token: str, body: str, image_urls: list[str],
                                   link_line: str | None) -> str:
     """사진 여러 장을 인스타그램 캐러셀처럼 한 게시물에 붙여서(다중 사진 게시물) 게시.
-    링크는 댓글로. 페이지 게시물 id 반환."""
+    링크가 있으면 본문 끝에 붙임 (댓글 권한(pages_manage_engagement) 불필요 — 사진이 이미 붙어있어
+    링크 미리보기 썸네일은 뜨지 않음). 페이지 게시물 id 반환."""
     import json as _json
     photo_ids = [upload_unpublished_photo(page_id, page_token, url) for url in image_urls]
     media_params = {f"attached_media[{i}]": _json.dumps({"media_fbid": pid}) for i, pid in enumerate(photo_ids)}
-    post_id = _call("POST", f"/{page_id}/feed", message=body, access_token=page_token, **media_params)["id"]
-    if link_line:
-        comment_on_post(post_id, page_token, link_line)
-    return post_id
+    message = f"{body}\n\n{link_line}" if link_line else body
+    return _call("POST", f"/{page_id}/feed", message=message, access_token=page_token, **media_params)["id"]

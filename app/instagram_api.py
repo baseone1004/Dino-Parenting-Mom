@@ -51,17 +51,14 @@ def comment_on_media(media_id: str, page_token: str, message: str) -> str:
 
 def publish_carousel_with_link(ig_user_id: str, page_token: str, image_urls: list[str], caption: str,
                                link_line: str | None) -> str:
-    """카드뉴스 이미지들을 캐러셀로 게시하고, 있으면 링크를 댓글로 답니다. media id 반환."""
+    """카드뉴스 이미지들을 캐러셀로 게시. 링크가 있으면 캡션 끝에 붙임 (댓글 권한 불필요). media id 반환."""
     if len(image_urls) < 2:
         raise InstagramError("캐러셀에는 이미지가 최소 2장 필요합니다.")
     children = []
     for url in image_urls:
         children.append(create_carousel_item(ig_user_id, page_token, url))
         time.sleep(1)  # 컨테이너 생성 처리 대기
-    creation_id = create_carousel_container(ig_user_id, page_token, children, caption)
+    full_caption = f"{caption}\n\n{link_line}" if link_line else caption
+    creation_id = create_carousel_container(ig_user_id, page_token, children, full_caption)
     time.sleep(3)
-    media_id = publish_container(ig_user_id, page_token, creation_id)
-    if link_line:
-        time.sleep(3)
-        comment_on_media(media_id, page_token, link_line)
-    return media_id
+    return publish_container(ig_user_id, page_token, creation_id)
