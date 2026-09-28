@@ -6,10 +6,10 @@ import logging
 import time
 from datetime import date, datetime, timedelta
 
-from app import store, coupang, threads_api, facebook_api, instagram_api, slides_cards, telegram_notify
+from app import store, coupang, toss, threads_api, facebook_api, instagram_api, slides_cards, telegram_notify
 from app import product_image, kie_image
 from app.config import cfg, account_cfg, env
-from app.generator import generate_post, build_card_slides
+from app.generator import generate_post, build_card_slides, pick_topic
 
 log = logging.getLogger("service")
 
@@ -213,10 +213,30 @@ def batch_generate(account_id: str, n: int, schedule: bool = False):
 
 
 # ---------------- 생성 → 저장/게시 ----------------
+def resolve_auto_product(account_id: str, topic: dict):
+    """topic['product'] 가 'AUTO' 면 트렌드 상품을 실제로 뽑아 product/link 를 채움 (실패하면 product 없이 진행)."""
+    if topic.get("product") != "AUTO":
+        return
+    acc = account_cfg(account_id) or {}
+    source = acc.get("link_source", "coupang")
+    try:
+        if source == "toss" and cfg["toss"].get("use_api", False):
+            item = toss.pick_trending_product()
+            topic["product"] = item.get("displayName")
+            topic["link"] = toss.link_for_item(item["tacaItemId"])
+        else:
+            topic["product"] = None
+    except Exception as e:
+        store.log("WARN", f"자동 상품 선정 실패, 상품 없이 진행: {e}", account_id)
+        topic["product"] = None
+
+
 def create_post(account_id: str, publish: bool | None = None, topic: dict | None = None) -> dict:
     """글 1개 생성. publish=None 이면 현재 모드에 따름(test→초안, live→즉시 게시)."""
     if publish is None:
         publish = posting_mode() == "live"
+    topic = topic or pick_topic(account_id)
+    resolve_auto_product(account_id, topic)
     topic, body = generate_post(account_id, topic)
     link = build_link_line(account_id, topic)
     post_id = store.add_post(account_id, topic.get("title", ""), body, link, store.DRAFT,
