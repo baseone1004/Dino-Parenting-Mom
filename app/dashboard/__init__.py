@@ -17,8 +17,9 @@ app.secret_key = "threads-auto-local-dashboard"
 @app.before_request
 def _basic_auth():
     """config.yaml 의 dashboard.password 가 설정돼 있으면 모든 요청에 로그인 요구 (아이디 admin).
-    /privacy 는 Google OAuth 동의 화면 심사에서 공개 접근이 필요해 예외."""
-    if request.path == "/privacy":
+    /privacy 는 Google OAuth 동의 화면 심사, /media/ 는 페이스북/인스타그램이 카드뉴스 이미지를
+    비로그인 상태로 가져가야 해서 예외 (그렇지 않으면 401 페이지를 이미지로 착각해 게시 실패함)."""
+    if request.path == "/privacy" or request.path.startswith("/media/"):
         return None
     pw = (cfg["dashboard"].get("password") or "").strip()
     if not pw:
