@@ -1,9 +1,10 @@
 """Google Slides API 로 카드뉴스 이미지 생성 (인스타그램용).
 
-템플릿 프레젠테이션(SLIDES_TEMPLATE_ID)은 미리 만들어 공유해 둬야 함 — scripts/setup_google_slides.md 참고.
+템플릿 프레젠테이션(SLIDES_TEMPLATE_ID)은 미리 만들어둬야 함 — scripts/setup_google_slides.md 참고.
   1번 슬라이드: {{TITLE}} 플레이스홀더 텍스트
   2번 슬라이드부터: {{BODY1}}, {{BODY2}}, ... 플레이스홀더 (config.yaml 의 instagram.cards_per_post - 1 장만큼)
-서비스 계정 이메일에 그 프레젠테이션을 '편집자'로 공유해둬야 접근 가능.
+인증은 사용자 계정 OAuth (GOOGLE_OAUTH_*) 사용 — 서비스 계정은 개인 Gmail 환경에서 Drive 저장용량이
+0이라 파일 복사(files.copy)가 storageQuotaExceeded 로 실패하므로 쓰지 않음.
 """
 from __future__ import annotations
 
@@ -11,12 +12,13 @@ import time
 from pathlib import Path
 
 import requests
-from google.oauth2 import service_account
+from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 
 from app.config import DATA_DIR, env
 
 SCOPES = ["https://www.googleapis.com/auth/presentations", "https://www.googleapis.com/auth/drive"]
+TOKEN_URI = "https://oauth2.googleapis.com/token"
 CARDS_DIR = DATA_DIR / "cards"
 CARDS_DIR.mkdir(exist_ok=True)
 
@@ -26,10 +28,15 @@ class SlidesError(RuntimeError):
 
 
 def _services():
-    path = env("GOOGLE_SERVICE_ACCOUNT_FILE")
-    if not path or not Path(path).exists():
-        raise SlidesError(".env 의 GOOGLE_SERVICE_ACCOUNT_FILE 이 없거나 파일을 찾을 수 없습니다.")
-    creds = service_account.Credentials.from_service_account_file(path, scopes=SCOPES)
+    """사용자 계정 OAuth 로 인증 (서비스 계정은 개인 Gmail 환경에서 Drive 저장용량이 0이라 파일 복사가 불가능해 사용 못 함)."""
+    client_id = env("GOOGLE_OAUTH_CLIENT_ID")
+    client_secret = env("GOOGLE_OAUTH_CLIENT_SECRET")
+    refresh_token = env("GOOGLE_OAUTH_REFRESH_TOKEN")
+    if not client_id or not client_secret or not refresh_token:
+        raise SlidesError(".env 의 GOOGLE_OAUTH_CLIENT_ID / GOOGLE_OAUTH_CLIENT_SECRET / "
+                          "GOOGLE_OAUTH_REFRESH_TOKEN 이 없습니다. scripts/setup_google_slides.md 참고.")
+    creds = Credentials(token=None, refresh_token=refresh_token, token_uri=TOKEN_URI,
+                        client_id=client_id, client_secret=client_secret, scopes=SCOPES)
     return (build("slides", "v1", credentials=creds, cache_discovery=False),
             build("drive", "v3", credentials=creds, cache_discovery=False))
 

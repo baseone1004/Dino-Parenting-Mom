@@ -16,7 +16,10 @@ app.secret_key = "threads-auto-local-dashboard"
 
 @app.before_request
 def _basic_auth():
-    """config.yaml 의 dashboard.password 가 설정돼 있으면 모든 요청에 로그인 요구 (아이디 admin)."""
+    """config.yaml 의 dashboard.password 가 설정돼 있으면 모든 요청에 로그인 요구 (아이디 admin).
+    /privacy 는 Google OAuth 동의 화면 심사에서 공개 접근이 필요해 예외."""
+    if request.path == "/privacy":
+        return None
     pw = (cfg["dashboard"].get("password") or "").strip()
     if not pw:
         return None
@@ -221,6 +224,22 @@ def retry_platform(post_id, platform):
     ok = service.retry_platform(post_id, platform)
     flash(f"{platform} 재게시 {'완료' if ok else '실패 — 로그를 확인하세요'}")
     return redirect(url_for("index"))
+
+
+@app.route("/privacy")
+def privacy():
+    """Google OAuth 동의 화면 브랜딩에 필요한 개인정보처리방침 페이지."""
+    return """<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<title>개인정보처리방침 - sns-auto</title></head><body style="font-family:sans-serif;max-width:640px;margin:40px auto;line-height:1.6">
+<h1>개인정보처리방침</h1>
+<p>sns-auto 는 개인이 운영하는 SNS 자동 게시 도구이며, 아래 Google API 권한을 다음 목적으로만 사용합니다.</p>
+<ul>
+<li>Google Slides / Drive API: 인스타그램 게시용 카드뉴스 이미지를 자동 생성하기 위해 소유자 본인 계정의
+프레젠테이션 템플릿을 복제하고, 이미지 추출 후 즉시 삭제합니다.</li>
+</ul>
+<p>수집한 데이터는 제3자와 공유하지 않으며, 소유자 본인의 서버 외부로 전송하지 않습니다.</p>
+<p>문의: lifeideuk@gmail.com</p>
+</body></html>"""
 
 
 @app.route("/media/cards/<int:post_id>/<path:filename>")
