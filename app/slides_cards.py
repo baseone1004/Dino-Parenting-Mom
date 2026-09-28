@@ -131,7 +131,7 @@ def render_cards(post_id: int, title: str, slide_texts: list[str], cover_image_u
                           "shapeProperties": {"shapeBackgroundFill": {"solidFill": {
                               "color": {"rgbColor": {"red": 0, "green": 0, "blue": 0}}, "alpha": SCRIM_ALPHA}}},
                           "fields": "shapeBackgroundFill.solidFill"}},
-                        {"updatePageElementsZOrder": {"pageObjectId": page_id,
+                        {"updatePageElementsZOrder": {
                           "pageElementObjectIds": [img_id, scrim_id], "operation": "SEND_TO_BACK"}},
                     ]
                     body_shape_id = next(
