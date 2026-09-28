@@ -27,6 +27,24 @@ class SlidesError(RuntimeError):
     pass
 
 
+ACCENT_COLOR = {"red": 1.0, "green": 0.85, "blue": 0.2}
+WHITE = {"red": 1.0, "green": 1.0, "blue": 1.0}
+
+
+def _split_title_lines(title: str) -> tuple[str, str]:
+    """제목을 길이 균형이 맞는 두 줄로 나눔 (단어 경계 기준). 한 단어뿐이면 안 나눔."""
+    words = title.split(" ")
+    if len(words) < 2:
+        return title, ""
+    best_i, best_diff = 1, None
+    for i in range(1, len(words)):
+        line1, line2 = " ".join(words[:i]), " ".join(words[i:])
+        diff = abs(len(line1) - len(line2))
+        if best_diff is None or diff < best_diff:
+            best_i, best_diff = i, diff
+    return " ".join(words[:best_i]), " ".join(words[best_i:])
+
+
 def _services():
     """사용자 계정 OAuth 로 인증 (서비스 계정은 개인 Gmail 환경에서 Drive 저장용량이 0이라 파일 복사가 불가능해 사용 못 함)."""
     client_id = env("GOOGLE_OAUTH_CLIENT_ID")
@@ -52,7 +70,10 @@ def render_cards(post_id: int, title: str, slide_texts: list[str], cover_image_u
     copy = drive_svc.files().copy(fileId=template_id, body={"name": f"card-{post_id}-{int(time.time())}"}).execute()
     copy_id = copy["id"]
     try:
-        reqs = [{"replaceAllText": {"containsText": {"text": "{{TITLE}}", "matchCase": True}, "replaceText": title}}]
+        line1, line2 = _split_title_lines(title)
+        two_line_title = f"{line1}\n{line2}" if line2 else line1
+        reqs = [{"replaceAllText": {"containsText": {"text": "{{TITLE}}", "matchCase": True},
+                                    "replaceText": two_line_title}}]
         for i, text in enumerate(slide_texts, start=1):
             reqs.append({"replaceAllText": {"containsText": {"text": f"{{{{BODY{i}}}}}", "matchCase": True},
                                             "replaceText": text}})
@@ -61,14 +82,32 @@ def render_cards(post_id: int, title: str, slide_texts: list[str], cover_image_u
         pres = slides_svc.presentations().get(presentationId=copy_id).execute()
         pages = pres.get("slides", [])
 
-        if cover_image_url and pages:
+        follow_up = []
+        if pages:
             cover_image_id = next(
                 (el["objectId"] for el in pages[0].get("pageElements", []) if "image" in el), None)
-            if cover_image_id:
-                slides_svc.presentations().batchUpdate(presentationId=copy_id, body={"requests": [
-                    {"replaceImage": {"imageObjectId": cover_image_id, "url": cover_image_url,
-                                      "imageReplaceMethod": "CENTER_CROP"}},
-                ]}).execute()
+            if cover_image_url and cover_image_id:
+                follow_up.append({"replaceImage": {"imageObjectId": cover_image_id, "url": cover_image_url,
+                                                   "imageReplaceMethod": "CENTER_CROP"}})
+            if line2:
+                title_shape_id = next(
+                    (el["objectId"] for el in pages[0].get("pageElements", [])
+                     if "shape" in el and el["shape"].get("text")
+                     and "".join(r.get("textRun", {}).get("content", "")
+                                for r in el["shape"]["text"].get("textElements", [])).strip().startswith(line1)),
+                    None)
+                if title_shape_id:
+                    follow_up += [
+                        {"updateTextStyle": {"objectId": title_shape_id,
+                          "textRange": {"type": "FIXED_RANGE", "startIndex": 0, "endIndex": len(line1)},
+                          "style": {"foregroundColor": {"opaqueColor": {"rgbColor": WHITE}}}, "fields": "foregroundColor"}},
+                        {"updateTextStyle": {"objectId": title_shape_id,
+                          "textRange": {"type": "FIXED_RANGE", "startIndex": len(line1) + 1,
+                                        "endIndex": len(line1) + 1 + len(line2)},
+                          "style": {"foregroundColor": {"opaqueColor": {"rgbColor": ACCENT_COLOR}}}, "fields": "foregroundColor"}},
+                    ]
+        if follow_up:
+            slides_svc.presentations().batchUpdate(presentationId=copy_id, body={"requests": follow_up}).execute()
         n = 1 + len(slide_texts)
         out_dir = CARDS_DIR / str(post_id)
         out_dir.mkdir(parents=True, exist_ok=True)
