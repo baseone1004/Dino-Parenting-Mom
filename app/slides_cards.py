@@ -75,7 +75,7 @@ def render_cards(post_id: int, title: str, slide_texts: list[str], cover_image_u
         for i, page in enumerate(pages[:n], start=1):
             thumb = slides_svc.presentations().pages().getThumbnail(
                 presentationId=copy_id, pageObjectId=page["objectId"],
-                **{"thumbnailProperties.thumbnailSize": "LARGE"},
+                thumbnailProperties_thumbnailSize="LARGE",
             ).execute()
             img = requests.get(thumb["contentUrl"], timeout=30)
             img.raise_for_status()
