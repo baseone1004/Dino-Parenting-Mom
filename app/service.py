@@ -265,7 +265,14 @@ def cover_image_for(post: dict) -> str | None:
             return img
         store.log("WARN", f"#{post['id']} 상품 이미지 추출 실패, AI 이미지로 대체", account_id)
     try:
-        prompt = f"인스타그램 카드뉴스 표지 사진, 아래 글 분위기에 어울리는 사진 (텍스트 없이):\n{post.get('topic', '')}\n{post['body'][:200]}"
+        # 본문을 그대로 넣으면 모델이 "이 문장을 이미지에 그려야 한다"고 오해해 깨진 가짜 텍스트를 그리는 경우가
+        # 있어 주제 한 줄만 분위기 힌트로 쓰고, 텍스트/화면/글자 금지를 영어로 강하게 명시.
+        prompt = (
+            "A single high-quality lifestyle photograph, warm and cozy editorial style, soft natural lighting, "
+            "no people's faces close-up needed. Absolutely no text, no letters, no words, no captions, "
+            "no screenshots, no phone or app UI, no logos, no watermarks anywhere in the image — a completely "
+            f"clean photographic scene only. Mood/topic to reflect: {post.get('topic', '')}"
+        )
         return kie_image.generate_image(prompt)
     except Exception as e:
         store.log("WARN", f"#{post['id']} KIE 이미지 생성 실패: {e}", account_id)
