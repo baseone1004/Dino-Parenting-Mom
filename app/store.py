@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS posts (
     instagram_post_id TEXT,
     instagram_error TEXT,
     card_image_urls TEXT,
+    product_url TEXT,
     error TEXT,
     attempts INTEGER DEFAULT 0,
     created_at TEXT NOT NULL,
@@ -108,7 +109,8 @@ def init():
         for col, ddl in [("views", "INTEGER DEFAULT 0"), ("likes", "INTEGER DEFAULT 0"),
                          ("replies", "INTEGER DEFAULT 0"), ("reposts", "INTEGER DEFAULT 0"), ("insights_at", "TEXT"),
                          ("facebook_post_id", "TEXT"), ("facebook_error", "TEXT"),
-                         ("instagram_post_id", "TEXT"), ("instagram_error", "TEXT"), ("card_image_urls", "TEXT")]:
+                         ("instagram_post_id", "TEXT"), ("instagram_error", "TEXT"), ("card_image_urls", "TEXT"),
+                         ("product_url", "TEXT")]:
             if col not in cols:
                 c.execute(f"ALTER TABLE posts ADD COLUMN {col} {ddl}")
         acc_cols = {r["name"] for r in c.execute("PRAGMA table_info(accounts)")}
@@ -150,11 +152,12 @@ def upsert_account(account_id: str, **fields):
 
 
 # ---------------- posts ----------------
-def add_post(account_id: str, topic: str, body: str, link: str | None, status: str) -> int:
+def add_post(account_id: str, topic: str, body: str, link: str | None, status: str,
+            product_url: str | None = None) -> int:
     with conn() as c:
         cur = c.execute(
-            "INSERT INTO posts(account_id,topic,body,link,status,created_at) VALUES(?,?,?,?,?,?)",
-            (account_id, topic, body, link, status, now()),
+            "INSERT INTO posts(account_id,topic,body,link,status,product_url,created_at) VALUES(?,?,?,?,?,?,?)",
+            (account_id, topic, body, link, status, product_url, now()),
         )
         return cur.lastrowid
 

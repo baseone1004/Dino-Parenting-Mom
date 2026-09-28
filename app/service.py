@@ -7,6 +7,7 @@ import time
 from datetime import date, datetime, timedelta
 
 from app import store, coupang, threads_api, facebook_api, instagram_api, slides_cards, telegram_notify
+from app import product_image, kie_image
 from app.config import cfg, account_cfg, env
 from app.generator import generate_post, build_card_slides
 
@@ -218,7 +219,8 @@ def create_post(account_id: str, publish: bool | None = None, topic: dict | None
         publish = posting_mode() == "live"
     topic, body = generate_post(account_id, topic)
     link = build_link_line(account_id, topic)
-    post_id = store.add_post(account_id, topic.get("title", ""), body, link, store.DRAFT)
+    post_id = store.add_post(account_id, topic.get("title", ""), body, link, store.DRAFT,
+                             product_url=topic.get("link"))
     store.log("INFO", f"글 생성 #{post_id} · {topic.get('title','')[:40]}", account_id)
     if publish:
         publish_post(post_id)
@@ -250,6 +252,22 @@ def publish_facebook(post_id: int) -> bool:
         return False
 
 
+def cover_image_for(post: dict) -> str | None:
+    """상품 링크가 있으면 그 상품 이미지, 없으면 KIE.AI 로 글 내용에 맞는 이미지를 생성 (실패하면 None — 이미지 없이 진행)."""
+    account_id = post["account_id"]
+    if post.get("product_url"):
+        img = product_image.fetch_og_image(post["product_url"])
+        if img:
+            return img
+        store.log("WARN", f"#{post['id']} 상품 이미지 추출 실패, AI 이미지로 대체", account_id)
+    try:
+        prompt = f"인스타그램 카드뉴스 표지 사진, 아래 글 분위기에 어울리는 사진 (텍스트 없이):\n{post.get('topic', '')}\n{post['body'][:200]}"
+        return kie_image.generate_image(prompt)
+    except Exception as e:
+        store.log("WARN", f"#{post['id']} KIE 이미지 생성 실패: {e}", account_id)
+        return None
+
+
 def publish_instagram(post_id: int) -> bool:
     """인스타그램에 카드뉴스 캐러셀로 게시 (실패해도 다른 플랫폼에 영향 없음)."""
     post = store.get_post(post_id)
@@ -268,7 +286,8 @@ def publish_instagram(post_id: int) -> bool:
         image_urls = json.loads(post["card_image_urls"]) if post.get("card_image_urls") else None
         if not image_urls:
             slide_texts = build_card_slides({"title": post.get("topic", "")}, post["body"])
-            paths = slides_cards.render_cards(post_id, post.get("topic") or "", slide_texts)
+            cover_image_url = cover_image_for(post)
+            paths = slides_cards.render_cards(post_id, post.get("topic") or "", slide_texts, cover_image_url)
             image_urls = [f"{base}/media/cards/{post_id}/{p.name}" for p in paths]
             store.update_post(post_id, card_image_urls=json.dumps(image_urls))
         mid = instagram_api.publish_carousel_with_link(ig_id, page_token, image_urls, post["body"], post["link"])

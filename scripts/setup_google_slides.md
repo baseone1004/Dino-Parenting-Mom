@@ -39,9 +39,12 @@
    - 4번 슬라이드: `{{BODY3}}`
    - 5번 슬라이드: `{{BODY4}}`
    (슬라이드 장수를 바꾸려면 `config.yaml` 의 `instagram.cards_per_post` 도 같이 바꾸고, 템플릿 슬라이드 수/플레이스홀더 번호를 맞추세요)
-4. 주소창 URL 에서 프레젠테이션 ID 복사
+4. (선택) 1번 슬라이드에 아무 이미지나 하나 삽입 — 표지 사진 자리. `render_cards()` 가 1번 슬라이드의 첫 이미지 요소를
+   찾아서 `cover_image_url` 로 자동 교체합니다. 지금 쓰는 템플릿(카드뉴스 템플릿)은 이미 배경 이미지 자리 +
+   귀여운 손글씨 폰트(Gaegu)가 5개 슬라이드 모두 적용돼 있음.
+5. 주소창 URL 에서 프레젠테이션 ID 복사
    `https://docs.google.com/presentation/d/`**`이 부분`**`/edit`
-5. `.env` 의 `SLIDES_TEMPLATE_ID=` 에 붙여넣기
+6. `.env` 의 `SLIDES_TEMPLATE_ID=` 에 붙여넣기
 
 ## 4. 확인
 - 파이썬 콘솔이나 `python -c` 로 직접 테스트:
