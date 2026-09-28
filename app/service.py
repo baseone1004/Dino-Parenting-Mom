@@ -309,9 +309,14 @@ def ensure_card_images(post: dict) -> list[str] | None:
     base = public_base_url()
     if not base:
         return None
-    slide_texts = build_card_slides({"title": post.get("topic", "")}, post["body"])
-    cover_image_url = cover_image_for(post)
-    paths = slides_cards.render_cards(post["id"], post.get("topic") or "", slide_texts, cover_image_url)
+    try:
+        slide_texts = build_card_slides({"title": post.get("topic", "")}, post["body"])
+        cover_image_url = cover_image_for(post)
+        paths = slides_cards.render_cards(post["id"], post.get("topic") or "", slide_texts, cover_image_url)
+    except Exception as e:
+        # 카드뉴스 생성 실패는 페이스북(텍스트만으로 대체 가능)까지 막으면 안 됨 — 여기서 삼키고 None 반환.
+        store.log("WARN", f"#{post['id']} 카드뉴스 이미지 생성 실패 (텍스트만 게시로 대체): {e}", post["account_id"])
+        return None
     image_urls = [f"{base}/media/cards/{post['id']}/{p.name}" for p in paths]
     store.update_post(post["id"], card_image_urls=json.dumps(image_urls))
     return image_urls
@@ -330,7 +335,8 @@ def publish_instagram(post_id: int) -> bool:
     try:
         image_urls = ensure_card_images(post)
         if not image_urls:
-            store.update_post(post_id, instagram_error="dashboard.public_base_url 미설정 — 클라우드 서버 배포 후 설정 필요")
+            reason = "dashboard.public_base_url 미설정" if not public_base_url() else "카드뉴스 이미지 생성 실패 (로그 확인)"
+            store.update_post(post_id, instagram_error=reason)
             return False
         mid = instagram_api.publish_carousel_with_link(ig_id, page_token, image_urls, post["body"], post["link"])
         store.update_post(post_id, instagram_post_id=mid, instagram_error=None)
