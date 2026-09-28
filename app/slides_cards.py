@@ -66,7 +66,8 @@ def render_cards(post_id: int, title: str, slide_texts: list[str], cover_image_u
                 (el["objectId"] for el in pages[0].get("pageElements", []) if "image" in el), None)
             if cover_image_id:
                 slides_svc.presentations().batchUpdate(presentationId=copy_id, body={"requests": [
-                    {"replaceImage": {"imageObjectId": cover_image_id, "url": cover_image_url}},
+                    {"replaceImage": {"imageObjectId": cover_image_id, "url": cover_image_url,
+                                      "imageReplaceMethod": "CENTER_CROP"}},
                 ]}).execute()
         n = 1 + len(slide_texts)
         out_dir = CARDS_DIR / str(post_id)
