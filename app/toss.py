@@ -19,8 +19,9 @@ from app.config import cfg, env
 TOKEN_URL = "https://oauth2.cert.toss.im/token"
 API_BASE = "https://sharelink.toss.im/openapi"
 
-# 생활용품/주방용품/욕실용품 (식품·건강기능식품 없음) — sharelink.toss.im/openapi/categories 로 조회해 확정한 값
-LIFESTYLE_CATEGORY_IDS = [29967, 34245, 23759]
+# 생활용품/주방용품/욕실용품 (식품·건강기능식품 없음) — sharelink.toss.im/openapi/categories 로 조회해 확정한 값.
+# 34245(청소용품)는 best-categories 응답이 항상 비어 있어서 제외 (카테고리는 존재하지만 베스트셀러 집계가 안 되는 듯).
+LIFESTYLE_CATEGORY_IDS = [29967, 23759]
 
 _token_cache: dict = {"token": None, "expires_at": 0}
 
@@ -81,13 +82,14 @@ def link_for_item(taca_item_id: int | str, sub_tag: str | None = None) -> str:
 
 def pick_trending_product(category_ids: list[int] | None = None, size: int = 15) -> dict:
     """생활용품/주방용품/욕실용품 카테고리 중 하나에서 베스트셀러 상품을 무작위로 하나 골라 반환.
-    {'tacaItemId', 'displayName', 'displayPrice'}. 품절 상품은 제외."""
-    category_ids = category_ids or cfg.get("toss", {}).get("category_ids") or LIFESTYLE_CATEGORY_IDS
-    cid = random.choice(category_ids)
-    data = _request("GET", f"/products/best-categories/{cid}", params={"size": size})
-    success = data.get("success") or data
-    items = success.get("items") or []
-    candidates = [it for it in items if not it.get("isSoldOut")]
-    if not candidates:
-        raise TossError(f"카테고리 {cid} 에서 판매 가능한 트렌드 상품을 찾지 못했습니다.")
-    return random.choice(candidates[: min(10, len(candidates))])
+    {'tacaItemId', 'displayName', 'displayPrice'}. 품절 상품은 제외. 한 카테고리가 비어 있으면 다른 카테고리로 재시도."""
+    category_ids = list(category_ids or cfg.get("toss", {}).get("category_ids") or LIFESTYLE_CATEGORY_IDS)
+    random.shuffle(category_ids)
+    for cid in category_ids:
+        data = _request("GET", f"/products/best-categories/{cid}", params={"size": size})
+        success = data.get("success") or data
+        items = success.get("items") or []
+        candidates = [it for it in items if not it.get("isSoldOut")]
+        if candidates:
+            return random.choice(candidates[: min(10, len(candidates))])
+    raise TossError(f"카테고리 {category_ids} 어디에서도 판매 가능한 트렌드 상품을 찾지 못했습니다.")
