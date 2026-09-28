@@ -242,7 +242,11 @@ def publish_facebook(post_id: int) -> bool:
         store.update_post(post_id, facebook_error="페이스북 페이지 미연결 (대시보드에서 연결)")
         return False
     try:
-        fid = facebook_api.publish_with_link(page_id, page_token, post["body"], post["link"])
+        image_urls = ensure_card_images(post)
+        if image_urls:
+            fid = facebook_api.publish_multi_photo_with_link(page_id, page_token, post["body"], image_urls, post["link"])
+        else:
+            fid = facebook_api.publish_with_link(page_id, page_token, post["body"], post["link"])
         store.update_post(post_id, facebook_post_id=fid, facebook_error=None)
         store.log("INFO", f"#{post_id} 페이스북 게시 완료 (id {fid})", account_id)
         return True
@@ -268,6 +272,24 @@ def cover_image_for(post: dict) -> str | None:
         return None
 
 
+def ensure_card_images(post: dict) -> list[str] | None:
+    """이 글의 카드뉴스 이미지 URL 목록을 구해서 반환 (없으면 생성해 DB 에 캐싱).
+    페이스북·인스타그램이 같은 이미지 세트를 공유 — 먼저 요청한 쪽이 생성하고 다음 쪽은 캐시를 씀.
+    public_base_url 미설정이면 None."""
+    image_urls = json.loads(post["card_image_urls"]) if post.get("card_image_urls") else None
+    if image_urls:
+        return image_urls
+    base = public_base_url()
+    if not base:
+        return None
+    slide_texts = build_card_slides({"title": post.get("topic", "")}, post["body"])
+    cover_image_url = cover_image_for(post)
+    paths = slides_cards.render_cards(post["id"], post.get("topic") or "", slide_texts, cover_image_url)
+    image_urls = [f"{base}/media/cards/{post['id']}/{p.name}" for p in paths]
+    store.update_post(post["id"], card_image_urls=json.dumps(image_urls))
+    return image_urls
+
+
 def publish_instagram(post_id: int) -> bool:
     """인스타그램에 카드뉴스 캐러셀로 게시 (실패해도 다른 플랫폼에 영향 없음)."""
     post = store.get_post(post_id)
@@ -278,18 +300,11 @@ def publish_instagram(post_id: int) -> bool:
     if not ig_id or not page_token:
         store.update_post(post_id, instagram_error="인스타그램 미연결 (대시보드에서 페이스북 페이지 연결 필요)")
         return False
-    base = public_base_url()
-    if not base:
-        store.update_post(post_id, instagram_error="dashboard.public_base_url 미설정 — 클라우드 서버 배포 후 설정 필요")
-        return False
     try:
-        image_urls = json.loads(post["card_image_urls"]) if post.get("card_image_urls") else None
+        image_urls = ensure_card_images(post)
         if not image_urls:
-            slide_texts = build_card_slides({"title": post.get("topic", "")}, post["body"])
-            cover_image_url = cover_image_for(post)
-            paths = slides_cards.render_cards(post_id, post.get("topic") or "", slide_texts, cover_image_url)
-            image_urls = [f"{base}/media/cards/{post_id}/{p.name}" for p in paths]
-            store.update_post(post_id, card_image_urls=json.dumps(image_urls))
+            store.update_post(post_id, instagram_error="dashboard.public_base_url 미설정 — 클라우드 서버 배포 후 설정 필요")
+            return False
         mid = instagram_api.publish_carousel_with_link(ig_id, page_token, image_urls, post["body"], post["link"])
         store.update_post(post_id, instagram_post_id=mid, instagram_error=None)
         store.log("INFO", f"#{post_id} 인스타그램 게시 완료 (id {mid})", account_id)

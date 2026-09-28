@@ -51,3 +51,21 @@ def publish_with_link(page_id: str, page_token: str, body: str, link_line: str |
     if link_line:
         comment_on_post(post_id, page_token, link_line)
     return post_id
+
+
+def upload_unpublished_photo(page_id: str, page_token: str, image_url: str) -> str:
+    """나중에 피드 게시물에 첨부할 사진을 미리 업로드 (아직 타임라인에 안 보임). photo id 반환."""
+    return _call("POST", f"/{page_id}/photos", url=image_url, published="false", access_token=page_token)["id"]
+
+
+def publish_multi_photo_with_link(page_id: str, page_token: str, body: str, image_urls: list[str],
+                                  link_line: str | None) -> str:
+    """사진 여러 장을 인스타그램 캐러셀처럼 한 게시물에 붙여서(다중 사진 게시물) 게시.
+    링크는 댓글로. 페이지 게시물 id 반환."""
+    import json as _json
+    photo_ids = [upload_unpublished_photo(page_id, page_token, url) for url in image_urls]
+    media_params = {f"attached_media[{i}]": _json.dumps({"media_fbid": pid}) for i, pid in enumerate(photo_ids)}
+    post_id = _call("POST", f"/{page_id}/feed", message=body, access_token=page_token, **media_params)["id"]
+    if link_line:
+        comment_on_post(post_id, page_token, link_line)
+    return post_id
