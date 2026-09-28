@@ -5,6 +5,7 @@ import json
 import logging
 import time
 from datetime import date, datetime, timedelta
+from pathlib import Path
 
 from app import store, coupang, toss, threads_api, facebook_api, instagram_api, slides_cards, telegram_notify
 from app import product_image, kie_image
@@ -302,10 +303,58 @@ def cover_image_for(post: dict) -> str | None:
         return None
 
 
+def _card_style_hint(account_id: str) -> str:
+    return (account_cfg(account_id) or {}).get("card_style") or (
+        "modern Korean e-commerce shopping-app promotional card design, bold colorful Korean "
+        "typography, clean rounded badges and icons, bright background, professional marketing "
+        "poster look"
+    )
+
+
+def render_cards_openai(post: dict, slide_texts: list[str]) -> list[Path]:
+    """OpenAI gpt-image-1 로 카드뉴스 이미지를 통째로 생성 (문구·뱃지까지 이미지 안에 직접 그림).
+    실제 상품 사진이 있으면 그 사진을 기반으로 편집(상품 실물 유지), 없으면 새로 생성."""
+    from app import openai_image
+    account_id = post["account_id"]
+    style_hint = _card_style_hint(account_id)
+    texts = [post.get("topic") or ""] + list(slide_texts)
+    out_dir = slides_cards.CARDS_DIR / str(post["id"])
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    product_bytes = None
+    if post.get("product_url"):
+        img_url = product_image.fetch_og_image(post["product_url"])
+        if img_url:
+            try:
+                product_bytes = openai_image.fetch_bytes(img_url)
+            except Exception as e:
+                store.log("WARN", f"#{post['id']} 상품 이미지 다운로드 실패: {e}", account_id)
+
+    paths = []
+    for i, text in enumerate(texts, start=1):
+        if i == 1 and product_bytes:
+            prompt = (f"Edit this product photo into a square Korean shopping promotional card "
+                     f"({style_hint}). Keep the product exactly as shown, unchanged. Add a large "
+                     f"bold Korean headline text that reads exactly: \"{text}\", plus a small "
+                     f"rounded highlight badge. No other text, no watermarks.")
+            img_bytes = openai_image.edit_image(product_bytes, prompt)
+        else:
+            prompt = (f"Create a square Korean-language promotional card image ({style_hint}). "
+                     f"The large bold Korean text must read exactly: \"{text}\". Include a related "
+                     f"everyday lifestyle photo-realistic scene as background. No other text, no "
+                     f"watermarks, no fake brand logos.")
+            img_bytes = openai_image.generate_image(prompt)
+        p = out_dir / f"{i}.png"
+        p.write_bytes(img_bytes)
+        paths.append(p)
+    return paths
+
+
 def ensure_card_images(post: dict) -> list[str] | None:
     """이 글의 카드뉴스 이미지 URL 목록을 구해서 반환 (없으면 생성해 DB 에 캐싱).
     페이스북·인스타그램이 같은 이미지 세트를 공유 — 먼저 요청한 쪽이 생성하고 다음 쪽은 캐시를 씀.
-    public_base_url 미설정이면 None."""
+    public_base_url 미설정이면 None. OPENAI_API_KEY 가 있으면 gpt-image-1 로 문구까지 그려 넣고,
+    없으면 기존 구글 슬라이드(사진+텍스트 오버레이) 방식으로 대체."""
     image_urls = json.loads(post["card_image_urls"]) if post.get("card_image_urls") else None
     if image_urls:
         return image_urls
@@ -314,10 +363,13 @@ def ensure_card_images(post: dict) -> list[str] | None:
         return None
     try:
         slide_texts = build_card_slides({"title": post.get("topic", "")}, ensure_formal_body(post))
-        cover_image_url = cover_image_for(post)
-        font_family = (account_cfg(post["account_id"]) or {}).get("card_font")
-        paths = slides_cards.render_cards(post["id"], post.get("topic") or "", slide_texts, cover_image_url,
-                                          font_family)
+        if env("OPENAI_API_KEY"):
+            paths = render_cards_openai(post, slide_texts)
+        else:
+            cover_image_url = cover_image_for(post)
+            font_family = (account_cfg(post["account_id"]) or {}).get("card_font")
+            paths = slides_cards.render_cards(post["id"], post.get("topic") or "", slide_texts, cover_image_url,
+                                              font_family)
     except Exception as e:
         # 카드뉴스 생성 실패는 페이스북(텍스트만으로 대체 가능)까지 막으면 안 됨 — 여기서 삼키고 None 반환.
         store.log("WARN", f"#{post['id']} 카드뉴스 이미지 생성 실패 (텍스트만 게시로 대체): {e}", post["account_id"])
