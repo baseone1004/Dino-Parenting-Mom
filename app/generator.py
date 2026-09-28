@@ -148,6 +148,16 @@ def generate_post(account_id: str, topic: dict | None = None) -> tuple[dict, str
     return topic, body
 
 
+# ---------------- 페이스북/인스타그램용 존댓말 변환 ----------------
+def to_formal_body(body: str) -> str:
+    """스레드용 반말 본문을 페이스북/인스타그램용 존댓말로 변환 (내용·줄바꿈은 그대로, 말투만)."""
+    backend = get_backend()
+    system = ("당신은 글의 말투만 자연스러운 존댓말(해요체)로 바꾸는 편집자입니다. "
+             "문장 내용, 줄바꿈 구조, 이모지는 그대로 두고 문장 끝맺음만 존댓말로 바꾸세요.")
+    user = f"[원문]\n{body}\n\n위 글을 존댓말로 자연스럽게 바꿔 본문만 출력하세요. 설명은 쓰지 마세요."
+    return clean(backend.generate(system, user))
+
+
 # ---------------- 인스타그램 카드뉴스 ----------------
 def build_card_slides(topic: dict, body: str) -> list[str]:
     """본문을 카드뉴스 본문 슬라이드(제목 제외) 텍스트로 요약해 리스트로 반환."""

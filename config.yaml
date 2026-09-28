@@ -61,6 +61,10 @@ toss:
   # 주방수납용품/욕실용품 (식품·건강기능식품 없음) — sharelink.toss.im/openapi/categories 로 조회해 확정.
   # 34245(청소용품)는 베스트셀러 목록이 항상 비어 있어서 제외.
   category_ids: [29967, 23759]
+  # 링크 앞에 붙는 안내 문구 (쿠팡과 문구를 다르게 — 실제로 토스쇼핑 쉐어링크이므로)
+  link_prefix: "내가 쓰는 건 이거 👉 "
+  # 토스쇼핑 쉐어링크 고지 문구 (법적 필수 — 쿠팡 파트너스 문구를 그대로 쓰면 안 됨)
+  disclosure: "이 포스팅은 토스쇼핑 쉐어링크 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다."
 
 facebook:
   enabled: true
@@ -100,6 +104,7 @@ accounts:
     started_at: "2026-09-22"    # 이 날짜 + link_after_days 이전에는 링크 없이 경험담만
     link_after_days: 0     # 0 = 처음부터 쿠팡 링크 댓글 달기
     trend_keywords: ["육아템", "아기용품", "육아 꿀팁"]
+    card_font: "Gaegu"     # 카드뉴스 폰트 (계정마다 다르게)
 
   - id: salimtem                # accounts/salimtem/ 폴더
     name: "살림템"
@@ -108,6 +113,7 @@ accounts:
     started_at: "2026-09-22"
     link_after_days: 0     # 0 = 처음부터 쿠팡 링크 댓글 달기
     trend_keywords: ["살림템", "주방용품", "생활용품 추천"]
+    card_font: "Jua"     # 카드뉴스 폰트 (계정마다 다르게)
 
   - id: pettem                  # accounts/pettem/ 폴더
     name: "반려템"
@@ -133,3 +139,4 @@ accounts:
     link_after_days: 0     # 토스 승인 완료, 링크도 채워짐 (2026-09-28) — 처음부터 링크 댓글 달기
     link_source: toss       # product: AUTO 인 주제는 토스 트렌드 상품을 자동으로 뽑아 링크 발급
     trend_keywords: ["가성비템", "생활꿀템", "직장인 필수템"]
+    card_font: "Do Hyeon"     # 카드뉴스 폰트 (계정마다 다르게, 기존 기본값 유지)

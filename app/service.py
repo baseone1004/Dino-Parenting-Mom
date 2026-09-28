@@ -9,7 +9,7 @@ from datetime import date, datetime, timedelta
 from app import store, coupang, toss, threads_api, facebook_api, instagram_api, slides_cards, telegram_notify
 from app import product_image, kie_image
 from app.config import cfg, account_cfg, env
-from app.generator import generate_post, build_card_slides, pick_topic
+from app.generator import generate_post, build_card_slides, pick_topic, to_formal_body
 
 log = logging.getLogger("service")
 
@@ -147,9 +147,11 @@ def build_link_line(account_id: str, topic: dict) -> str | None:
             url = None
     if not url:
         return None
-    prefix = cfg["coupang"].get("link_prefix", "")
+    is_toss = (account_cfg(account_id) or {}).get("link_source") == "toss"
+    src_cfg = cfg["toss"] if is_toss else cfg["coupang"]
+    prefix = src_cfg.get("link_prefix", "")
     line = f"{prefix}{url}"
-    disc = cfg["coupang"].get("disclosure")
+    disc = src_cfg.get("disclosure")
     if disc:
         line += f"\n{disc}"
     return line
@@ -262,11 +264,12 @@ def publish_facebook(post_id: int) -> bool:
         store.update_post(post_id, facebook_error="페이스북 페이지 미연결 (대시보드에서 연결)")
         return False
     try:
+        body = ensure_formal_body(post)
         image_urls = ensure_card_images(post)
         if image_urls:
-            fid = facebook_api.publish_multi_photo_with_link(page_id, page_token, post["body"], image_urls, post["link"])
+            fid = facebook_api.publish_multi_photo_with_link(page_id, page_token, body, image_urls, post["link"])
         else:
-            fid = facebook_api.publish_with_link(page_id, page_token, post["body"], post["link"])
+            fid = facebook_api.publish_with_link(page_id, page_token, body, post["link"])
         store.update_post(post_id, facebook_post_id=fid, facebook_error=None)
         store.log("INFO", f"#{post_id} 페이스북 게시 완료 (id {fid})", account_id)
         return True
@@ -310,9 +313,11 @@ def ensure_card_images(post: dict) -> list[str] | None:
     if not base:
         return None
     try:
-        slide_texts = build_card_slides({"title": post.get("topic", "")}, post["body"])
+        slide_texts = build_card_slides({"title": post.get("topic", "")}, ensure_formal_body(post))
         cover_image_url = cover_image_for(post)
-        paths = slides_cards.render_cards(post["id"], post.get("topic") or "", slide_texts, cover_image_url)
+        font_family = (account_cfg(post["account_id"]) or {}).get("card_font")
+        paths = slides_cards.render_cards(post["id"], post.get("topic") or "", slide_texts, cover_image_url,
+                                          font_family)
     except Exception as e:
         # 카드뉴스 생성 실패는 페이스북(텍스트만으로 대체 가능)까지 막으면 안 됨 — 여기서 삼키고 None 반환.
         store.log("WARN", f"#{post['id']} 카드뉴스 이미지 생성 실패 (텍스트만 게시로 대체): {e}", post["account_id"])
@@ -320,6 +325,20 @@ def ensure_card_images(post: dict) -> list[str] | None:
     image_urls = [f"{base}/media/cards/{post['id']}/{p.name}" for p in paths]
     store.update_post(post["id"], card_image_urls=json.dumps(image_urls))
     return image_urls
+
+
+def ensure_formal_body(post: dict) -> str:
+    """페이스북·인스타그램용 존댓말 본문을 구해서 반환 (없으면 변환해 DB 에 캐싱, 두 플랫폼이 공유).
+    변환 실패 시 원문(반말) 그대로 사용."""
+    if post.get("body_formal"):
+        return post["body_formal"]
+    try:
+        formal = to_formal_body(post["body"])
+    except Exception as e:
+        store.log("WARN", f"#{post['id']} 존댓말 변환 실패 (원문 그대로 게시): {e}", post["account_id"])
+        return post["body"]
+    store.update_post(post["id"], body_formal=formal)
+    return formal
 
 
 def publish_instagram(post_id: int) -> bool:
@@ -338,7 +357,8 @@ def publish_instagram(post_id: int) -> bool:
             reason = "dashboard.public_base_url 미설정" if not public_base_url() else "카드뉴스 이미지 생성 실패 (로그 확인)"
             store.update_post(post_id, instagram_error=reason)
             return False
-        mid = instagram_api.publish_carousel_with_link(ig_id, page_token, image_urls, post["body"], post["link"])
+        body = ensure_formal_body(post)
+        mid = instagram_api.publish_carousel_with_link(ig_id, page_token, image_urls, body, post["link"])
         store.update_post(post_id, instagram_post_id=mid, instagram_error=None)
         store.log("INFO", f"#{post_id} 인스타그램 게시 완료 (id {mid})", account_id)
         return True

@@ -59,9 +59,17 @@ def _services():
             build("drive", "v3", credentials=creds, cache_discovery=False))
 
 
-def render_cards(post_id: int, title: str, slide_texts: list[str], cover_image_url: str | None = None) -> list[Path]:
+PAGE_SIZE = {"width": {"magnitude": 9144000, "unit": "EMU"}, "height": {"magnitude": 9144000, "unit": "EMU"}}
+FULL_TRANSFORM = {"scaleX": 1, "scaleY": 1, "translateX": 0, "translateY": 0, "unit": "EMU"}
+SCRIM_ALPHA = 0.32
+
+
+def render_cards(post_id: int, title: str, slide_texts: list[str], cover_image_url: str | None = None,
+                 font_family: str | None = None) -> list[Path]:
     """제목 1장 + 본문 slide_texts 장을 PNG 로 렌더링해 data/cards/<post_id>/ 에 저장, 경로 목록 반환.
-    cover_image_url 이 있으면 표지(1번 슬라이드) 배경 이미지를 그걸로 교체."""
+    cover_image_url 이 있으면 모든 슬라이드(표지+본문) 배경을 그 사진으로 전체 꽉 차게 채우고
+    (본문 슬라이드는 템플릿에 이미지 틀이 없어 새로 추가), 가독성을 위해 반투명 스크림 위에 큰 흰 글씨로.
+    font_family 를 주면 계정마다 다른 폰트로 렌더링."""
     template_id = env("SLIDES_TEMPLATE_ID")
     if not template_id:
         raise SlidesError(".env 의 SLIDES_TEMPLATE_ID 가 없습니다.")
@@ -106,6 +114,48 @@ def render_cards(post_id: int, title: str, slide_texts: list[str], cover_image_u
                                         "endIndex": len(line1) + 1 + len(line2)},
                           "style": {"foregroundColor": {"opaqueColor": {"rgbColor": ACCENT_COLOR}}}, "fields": "foregroundColor"}},
                     ]
+
+            # 본문 슬라이드: 표지와 같은 사진을 전체 배경으로 깔고(스크림으로 대비 확보) 글씨를 크게
+            if cover_image_url:
+                for i, text in enumerate(slide_texts, start=1):
+                    if i >= len(pages):
+                        break
+                    page_id = pages[i]["objectId"]
+                    img_id, scrim_id = f"bodyImg{i}", f"bodyScrim{i}"
+                    follow_up += [
+                        {"createImage": {"objectId": img_id, "url": cover_image_url,
+                          "elementProperties": {"pageObjectId": page_id, "size": PAGE_SIZE, "transform": FULL_TRANSFORM}}},
+                        {"createShape": {"objectId": scrim_id, "shapeType": "RECTANGLE",
+                          "elementProperties": {"pageObjectId": page_id, "size": PAGE_SIZE, "transform": FULL_TRANSFORM}}},
+                        {"updateShapeProperties": {"objectId": scrim_id,
+                          "shapeProperties": {"shapeBackgroundFill": {"solidFill": {
+                              "color": {"rgbColor": {"red": 0, "green": 0, "blue": 0}}, "alpha": SCRIM_ALPHA}}},
+                          "fields": "shapeBackgroundFill.solidFill"}},
+                        {"updatePageElementsZOrder": {"pageObjectId": page_id,
+                          "pageElementObjectIds": [img_id, scrim_id], "operation": "SEND_TO_BACK"}},
+                    ]
+                    body_shape_id = next(
+                        (el["objectId"] for el in pages[i].get("pageElements", [])
+                         if "shape" in el and el["shape"].get("text")
+                         and "".join(r.get("textRun", {}).get("content", "")
+                                    for r in el["shape"]["text"].get("textElements", [])).strip() == text.strip()),
+                        None)
+                    if body_shape_id:
+                        follow_up.append({"updateTextStyle": {"objectId": body_shape_id,
+                          "textRange": {"type": "ALL"},
+                          "style": {"fontSize": {"magnitude": 48, "unit": "PT"}, "bold": True,
+                                    "foregroundColor": {"opaqueColor": {"rgbColor": WHITE}}},
+                          "fields": "fontSize,bold,foregroundColor"}})
+
+            # 계정별 폰트
+            if font_family:
+                for page in pages[:1 + len(slide_texts)]:
+                    for el in page.get("pageElements", []):
+                        if "shape" in el and el["shape"].get("text"):
+                            follow_up.append({"updateTextStyle": {"objectId": el["objectId"],
+                              "textRange": {"type": "ALL"},
+                              "style": {"fontFamily": font_family, "weightedFontFamily": {"fontFamily": font_family}},
+                              "fields": "fontFamily,weightedFontFamily"}})
         if follow_up:
             slides_svc.presentations().batchUpdate(presentationId=copy_id, body={"requests": follow_up}).execute()
         n = 1 + len(slide_texts)

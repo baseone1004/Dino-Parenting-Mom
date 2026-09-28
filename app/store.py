@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS posts (
     instagram_error TEXT,
     card_image_urls TEXT,
     product_url TEXT,
+    body_formal TEXT,
     error TEXT,
     attempts INTEGER DEFAULT 0,
     created_at TEXT NOT NULL,
@@ -110,7 +111,7 @@ def init():
                          ("replies", "INTEGER DEFAULT 0"), ("reposts", "INTEGER DEFAULT 0"), ("insights_at", "TEXT"),
                          ("facebook_post_id", "TEXT"), ("facebook_error", "TEXT"),
                          ("instagram_post_id", "TEXT"), ("instagram_error", "TEXT"), ("card_image_urls", "TEXT"),
-                         ("product_url", "TEXT")]:
+                         ("product_url", "TEXT"), ("body_formal", "TEXT")]:
             if col not in cols:
                 c.execute(f"ALTER TABLE posts ADD COLUMN {col} {ddl}")
         acc_cols = {r["name"] for r in c.execute("PRAGMA table_info(accounts)")}
