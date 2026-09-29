@@ -104,7 +104,12 @@ accounts:
     started_at: "2026-09-22"    # 이 날짜 + link_after_days 이전에는 링크 없이 경험담만
     link_after_days: 0     # 0 = 처음부터 쿠팡 링크 댓글 달기
     trend_keywords: ["육아템", "아기용품", "육아 꿀팁"]
-    card_font: "Gaegu"     # 카드뉴스 폰트 (계정마다 다르게)
+    card_font: "Gaegu"     # 카드뉴스 폰트 (구글 슬라이드 방식일 때만 사용)
+    # gpt-image-1 카드뉴스 글씨체/분위기 지시문 (자연어로 자유롭게 수정 가능)
+    card_style: >-
+      cute hand-written style Korean lettering (like a warm handwritten diary font),
+      soft pastel color palette, rounded friendly badges and icons, cozy parenting/baby
+      lifestyle mood, professional marketing poster look
 
   - id: salimtem                # accounts/salimtem/ 폴더
     name: "살림템"
