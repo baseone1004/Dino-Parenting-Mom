@@ -314,9 +314,12 @@ def publish_facebook(post_id: int) -> bool:
     post = store.get_post(post_id)
     if not post or not cfg["facebook"].get("enabled", True):
         return False
+    account_id = post["account_id"]
+    if not (account_cfg(account_id) or {}).get("facebook_enabled", True):
+        store.log("INFO", f"#{post_id} 페이스북 게시 건너뜀 (계정 설정에서 비활성화)", account_id)
+        return False
     if post.get("facebook_post_id"):
         return True
-    account_id = post["account_id"]
     page_id, page_token = facebook_credentials(account_id)
     if not page_id or not page_token:
         store.update_post(post_id, facebook_error="페이스북 페이지 미연결 (대시보드에서 연결)")

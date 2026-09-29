@@ -56,6 +56,17 @@ class RetryTests(unittest.TestCase):
         self.assertEqual(call.call_args.args[:2], ("POST", "/page/photos"))
         self.assertEqual(call.call_args.kwargs["published"], "true")
 
+    def test_account_can_disable_facebook_only(self):
+        from app import service
+        post = {"id": 7, "account_id": "kkultem", "facebook_post_id": None}
+        with patch.dict(service.cfg, {"facebook": {"enabled": True}}, clear=False), \
+             patch.object(service.store, "get_post", return_value=post), \
+             patch.object(service, "account_cfg", return_value={"facebook_enabled": False}), \
+             patch.object(service, "facebook_credentials") as credentials, \
+             patch.object(service.store, "log"):
+            self.assertFalse(service.publish_facebook(7))
+        credentials.assert_not_called()
+
 
 class DailyProductTests(unittest.TestCase):
     def test_daily_product_is_cached(self):

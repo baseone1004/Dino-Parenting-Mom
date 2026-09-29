@@ -155,6 +155,7 @@ accounts:
     link_after_days: 0     # 토스 승인 완료, 링크도 채워짐 (2026-09-28) — 처음부터 링크 댓글 달기
     link_source: toss       # product: AUTO 인 주제는 토스 트렌드 상품을 자동으로 뽑아 링크 발급
     auto_product: true       # 매일 토스 인기 상품을 하나 선정해 모든 예약 글에 자동 적용
+    facebook_enabled: false  # Meta 개발자 계정 제한 해제 전까지 Instagram + Threads만 게시
     trend_keywords: ["가성비템", "생활꿀템", "직장인 필수템"]
     card_font: "Do Hyeon"     # 카드뉴스 폰트 (계정마다 다르게, 기존 기본값 유지)
     card_character: "assets/characters/kkultem_bee.png"
