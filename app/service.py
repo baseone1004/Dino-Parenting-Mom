@@ -325,7 +325,9 @@ def publish_facebook(post_id: int) -> bool:
         body = ensure_formal_body(post)
         image_urls = ensure_card_images(post)
         if image_urls:
-            fid = facebook_api.publish_multi_photo_with_link(page_id, page_token, body, image_urls, post["link"])
+            # New Pages Experience에서 다중 attached_media 게시물이 사진 탭에만 남는 사례가 있어
+            # Facebook은 대표 카드 1장을 공개 사진 게시물로 올린다. Instagram은 5장 캐러셀 유지.
+            fid = facebook_api.publish_photo_with_link(page_id, page_token, body, image_urls[0], post["link"])
         else:
             fid = facebook_api.publish_with_link(page_id, page_token, body, post["link"])
         store.update_post(post_id, facebook_post_id=fid, facebook_error=None)

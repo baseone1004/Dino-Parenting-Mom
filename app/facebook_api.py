@@ -51,6 +51,19 @@ def publish_with_link(page_id: str, page_token: str, body: str, link_line: str |
     return publish_feed_post(page_id, page_token, message)
 
 
+def publish_photo_with_link(page_id: str, page_token: str, body: str, image_url: str,
+                            link_line: str | None) -> str:
+    """대표 이미지 한 장을 공개 사진 게시물로 올린다.
+
+    다중 attached_media 피드 게시물은 일부 New Pages Experience 페이지에서 API 성공 후에도
+    사진 탭에만 남고 메인 피드에 표시되지 않는 경우가 있어, 피드 노출이 안정적인 /photos
+    published=true 방식을 Facebook 기본 게시 경로로 사용한다.
+    """
+    message = f"{body}\n\n{link_line}" if link_line else body
+    return _call("POST", f"/{page_id}/photos", url=image_url, published="true",
+                 message=message, access_token=page_token)["post_id"]
+
+
 def upload_unpublished_photo(page_id: str, page_token: str, image_url: str) -> str:
     """나중에 피드 게시물에 첨부할 사진을 미리 업로드 (아직 타임라인에 안 보임). photo id 반환."""
     return _call("POST", f"/{page_id}/photos", url=image_url, published="false", access_token=page_token)["id"]

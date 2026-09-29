@@ -46,6 +46,16 @@ class RetryTests(unittest.TestCase):
         facebook.assert_not_called()
         instagram.assert_not_called()
 
+    def test_facebook_photo_publish_uses_visible_photo_endpoint(self):
+        from app import facebook_api
+        with patch.object(facebook_api, "_call", return_value={"id": "photo-1", "post_id": "page_post-1"}) as call:
+            post_id = facebook_api.publish_photo_with_link(
+                "page", "token", "본문", "https://example.test/card.png", "링크",
+            )
+        self.assertEqual(post_id, "page_post-1")
+        self.assertEqual(call.call_args.args[:2], ("POST", "/page/photos"))
+        self.assertEqual(call.call_args.kwargs["published"], "true")
+
 
 class DailyProductTests(unittest.TestCase):
     def test_daily_product_is_cached(self):
