@@ -7,7 +7,9 @@ param(
   [Parameter(Mandatory=$true)][string]$Key,
   [string]$User = "ubuntu",
   [string]$Remote = "/home/ubuntu/threads-auto",
-  [switch]$Setup
+  [switch]$Setup,
+  # 서버 DB가 운영 원본이다. 재해복구처럼 명시적으로 필요한 경우에만 로컬 data/를 전송한다.
+  [switch]$IncludeData
 )
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
@@ -19,11 +21,15 @@ icacls $Key /inheritance:r /grant:r "$($env:USERNAME):R" | Out-Null
 Write-Host "== 서버 폴더 준비"
 Invoke-Expression "$ssh `"mkdir -p $Remote/data $Remote/logs`""
 
-Write-Host "== 파일 복사 (logs, .venv, __pycache__ 제외)"
+Write-Host "== 파일 복사 (운영 DB·logs·.venv·__pycache__ 제외)"
 $tmp = Join-Path $env:TEMP "threads-auto-deploy"
 if (Test-Path $tmp) { Remove-Item $tmp -Recurse -Force }
 New-Item -ItemType Directory $tmp | Out-Null
-robocopy $root $tmp /E /XD logs .venv __pycache__ .claude /XF "*.pyc" "console.log" "console.err" | Out-Null
+robocopy $root $tmp /E /XD data logs .venv __pycache__ .claude /XF "*.pyc" "console.log" "console.err" | Out-Null
+if ($IncludeData) {
+  Write-Host "경고: -IncludeData 지정됨 — 로컬 data/를 서버에 전송합니다."
+  robocopy "$root\data" "$tmp\data" /E /XF "*.backup*" | Out-Null
+}
 scp -i "$Key" -o StrictHostKeyChecking=accept-new -r "$tmp\*" "${User}@${Server}:$Remote/"
 Remove-Item $tmp -Recurse -Force
 

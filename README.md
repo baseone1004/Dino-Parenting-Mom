@@ -115,7 +115,9 @@ logs/app.log           실행 로그
    sudo systemctl start threads-auto
    ```
 5. **내 PC 의 프로그램은 끄기** (둘 다 켜져 있으면 두 번 게시됨)
-6. 이후 설정/주제 바꾼 뒤엔 `.\scripts\deploy.ps1 -Server <IP> -Key "...pem"` 로 다시 올리면 끝 (예약 글 DB 도 같이 감)
+6. 이후 설정/주제 바꾼 뒤엔 `.\scripts\deploy.ps1 -Server <IP> -Key "...pem"` 로 다시 올리면 끝
+   - 운영 DB와 토큰은 서버에 보존되며 기본 배포에서 덮어쓰지 않습니다.
+   - 재해복구 목적으로 로컬 `data/`를 서버에 복원할 때만 `-IncludeData`를 명시하세요.
 
 ## 10. 주의 (영상의 실수 3가지 반영)
 - **토큰 60일 만료**: 매일 03:30 자동 갱신 시도 + 대시보드 경고. 만료를 넘기면 재발급 필요.
