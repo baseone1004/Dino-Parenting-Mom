@@ -175,6 +175,19 @@ def get_post(post_id: int) -> dict | None:
         return dict(r) if r else None
 
 
+def recent_instagram_duplicate(post_id: int, account_id: str, body: str,
+                               hours: int = 24) -> dict | None:
+    """같은 계정·같은 본문이 최근에 이미 Instagram에 게시됐는지 확인한다."""
+    with conn() as c:
+        r = c.execute(
+            "SELECT id, instagram_post_id FROM posts "
+            "WHERE id<>? AND account_id=? AND body=? AND instagram_post_id IS NOT NULL "
+            "AND created_at >= datetime('now','localtime',?) ORDER BY id DESC LIMIT 1",
+            (post_id, account_id, body, f"-{max(1, hours)} hours"),
+        ).fetchone()
+        return dict(r) if r else None
+
+
 def update_post(post_id: int, **fields):
     sets = ", ".join(f"{k}=?" for k in fields)
     with conn() as c:

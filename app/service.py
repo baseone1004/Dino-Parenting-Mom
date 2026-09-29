@@ -507,6 +507,12 @@ def publish_instagram(post_id: int) -> bool:
     if post.get("instagram_post_id"):
         return True
     account_id = post["account_id"]
+    duplicate = store.recent_instagram_duplicate(post_id, account_id, post["body"])
+    if duplicate:
+        reason = f"동일 내용 중복 게시 차단 (기존 #{duplicate['id']})"
+        store.update_post(post_id, instagram_error=reason)
+        store.log("WARN", f"#{post_id} 인스타그램 {reason}", account_id)
+        return False
     ig_id, page_token = instagram_credentials(account_id)
     if not ig_id or not page_token:
         store.update_post(post_id, instagram_error="인스타그램 미연결 (대시보드에서 페이스북 페이지 연결 필요)")

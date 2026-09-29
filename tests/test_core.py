@@ -81,5 +81,20 @@ class PublishClaimTests(unittest.TestCase):
             store.delete_post(post_id)
 
 
+class InstagramDuplicateTests(unittest.TestCase):
+    def test_recent_same_body_is_blocked(self):
+        from app import store
+        store.init()
+        first = store.add_post("dedupe-test", "one", "same body", None, store.PUBLISHED)
+        second = store.add_post("dedupe-test", "two", "same body", None, store.DRAFT)
+        try:
+            store.update_post(first, instagram_post_id="ig-existing")
+            duplicate = store.recent_instagram_duplicate(second, "dedupe-test", "same body")
+            self.assertEqual(duplicate["id"], first)
+        finally:
+            store.delete_post(first)
+            store.delete_post(second)
+
+
 if __name__ == "__main__":
     unittest.main()
