@@ -241,6 +241,7 @@ def select_daily_product(account_id: str, force: bool = False) -> dict | None:
                 "product": item.get("displayName"),
                 "link": toss.link_for_item(item["tacaItemId"]),
                 "product_id": item.get("tacaItemId"),
+                "image": item.get("imageUrl") or item.get("thumbnailUrl") or item.get("displayImageUrl"),
                 "source": "toss",
             }
         elif source == "coupang" and cfg["coupang"].get("use_api", False) \
@@ -250,6 +251,7 @@ def select_daily_product(account_id: str, force: bool = False) -> dict | None:
                 "product": item.get("productName"),
                 "link": item.get("productUrl"),
                 "product_id": item.get("productId"),
+                "image": item.get("productImage"),
                 "source": "coupang",
             }
         else:
@@ -280,6 +282,7 @@ def resolve_auto_product(account_id: str, topic: dict):
     if item:
         topic["product"] = item["product"]
         topic["link"] = item["link"]
+        topic["image"] = item.get("image")
 
 
 def create_post(account_id: str, publish: bool | None = None, topic: dict | None = None) -> dict:
@@ -291,7 +294,7 @@ def create_post(account_id: str, publish: bool | None = None, topic: dict | None
     topic, body = generate_post(account_id, topic)
     link = build_link_line(account_id, topic)
     post_id = store.add_post(account_id, topic.get("title", ""), body, link, store.DRAFT,
-                             product_url=topic.get("link"))
+                             product_url=topic.get("link"), product_image_url=topic.get("image"))
     store.log("INFO", f"글 생성 #{post_id} · {topic.get('title','')[:40]}", account_id)
     if publish:
         publish_post(post_id)
@@ -333,6 +336,8 @@ def publish_facebook(post_id: int) -> bool:
 def cover_image_for(post: dict) -> str | None:
     """상품 링크가 있으면 그 상품 이미지, 없으면 KIE.AI 로 글 내용에 맞는 이미지를 생성 (실패하면 None — 이미지 없이 진행)."""
     account_id = post["account_id"]
+    if post.get("product_image_url"):
+        return post["product_image_url"]
     if post.get("product_url"):
         img = product_image.fetch_og_image(post["product_url"])
         if img:
