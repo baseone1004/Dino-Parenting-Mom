@@ -360,7 +360,8 @@ def render_cards_openai(post: dict, slide_texts: list[str]) -> list[Path]:
     is_toss = (account_cfg(account_id) or {}).get("link_source") == "toss"
     has_link = bool(post.get("link"))
     eyebrow = ("오늘 발견한 생활템" if is_toss else "요즘 잘 나가는 생활템") if has_link else ""
-    cta = "자세한 정보는 프로필 링크에서 확인 👆" if has_link else "저장해두고 나중에 확인하세요 📌"
+    # 이모지는 PIL 로 그릴 때 NanumGothic 에 없어서 빈 네모로 깨짐 — 텍스트만 사용.
+    cta = "자세한 정보는 프로필 링크에서 확인" if has_link else "저장해두고 나중에 확인하세요"
 
     product_bytes = None
     if post.get("product_url"):

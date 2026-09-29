@@ -60,11 +60,11 @@ def _crop_to_ratio(png_bytes: bytes, ratio: tuple[int, int] = TARGET_RATIO) -> b
     img = Image.open(io.BytesIO(png_bytes)).convert("RGB")
     w, h = img.size
     target_w, target_h = ratio
-    # 목표 비율보다 세로가 더 길면(=2:3 이 4:5 보다 김) 위아래를 잘라 높이를 줄인다.
+    # 목표 비율보다 세로가 더 길면(=2:3 이 4:5 보다 김) 아래쪽만 잘라 높이를 줄인다 — AI 가 그린
+    # 제목/일러스트는 위쪽에 있고, 잘려도 되는 여백은 우리가 텍스트 패널을 덧그릴 아래쪽에 있음.
     new_h = round(w * target_h / target_w)
     if new_h < h:
-        top = (h - new_h) // 2
-        img = img.crop((0, top, w, top + new_h))
+        img = img.crop((0, 0, w, new_h))
     else:
         new_w = round(h * target_w / target_h)
         left = (w - new_w) // 2
@@ -144,7 +144,9 @@ def compose_text_panel(img_bytes: bytes, subtitle: str, points: list[str], cta: 
         y = draw_block(subtitle, subtitle_font, (70, 55, 45, 255), y) + int(h * 0.015)
     for p in points[:3]:
         if p:
-            y = draw_block(f"✓ {p}", point_font, (80, 65, 55, 255), y)
+            # "✓"/이모지는 NanumGothic 에 없어서 빈 네모(tofu)로 깨짐 — 폰트가 확실히 지원하는
+            # 가운뎃점(•)으로 대체.
+            y = draw_block(f"• {p}", point_font, (80, 65, 55, 255), y)
     if cta:
         y += int(h * 0.015)
         draw_block(cta, cta_font, (140, 120, 105, 255), y)
