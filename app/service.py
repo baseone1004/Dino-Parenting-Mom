@@ -317,10 +317,9 @@ def _card_style_hint(account_id: str) -> str:
     return (account_cfg(account_id) or {}).get("card_style") or CARD_STYLE_BASE
 
 
-def _card_prompt(title: str, subtitle: str, points: list[str], style_hint: str, eyebrow: str,
-                 cta: str, edit_mode: bool) -> str:
-    points = [p for p in points if p][:3]
-    points_block = "\n".join(f"- {p}" for p in points) if points else "- (핵심 포인트 없음, 생략)"
+def _card_prompt(title: str, style_hint: str, eyebrow: str, edit_mode: bool) -> str:
+    """AI 에게는 제목(짧은 텍스트)과 일러스트만 맡긴다 — 부제목/체크리스트/CTA 같은 긴 문장은
+    gpt-image-1 이 종종 오타를 내서, 생성 후 compose_text_panel 로 정확한 폰트를 직접 덧그린다."""
     eyebrow_line = f'A small eyebrow label near the very top, exactly: "{eyebrow}"\n' if eyebrow else ""
     intro = ("Edit this product photo into a single Korean-language SNS card-news image for "
             "Instagram and Facebook feed, vertical portrait format. Keep the product in the photo "
@@ -338,19 +337,17 @@ make it the strongest visual element, emphasize 1-3 key words with an accent col
 {"Below the headline, keep the product photo large and centered, clearly recognizable." if edit_mode else
  "Below the headline, a large centered illustration of the main everyday product or scene related "
  "to the topic, clearly recognizable, with enough empty space around it."}
-A short supporting line below the headline, smaller than the headline, exactly: "{subtitle}"
-A small rounded info box near the bottom with short check-mark bullet points, exactly:
-{points_block}
-A short call-to-action line near (not at) the very bottom, exactly: "{cta}"
-All Korean text must render accurately and legibly, never overlapping the illustration or product,
-never cut off at the edges. Do not add any other text, watermarks, fake brand logos, fake star
-ratings, fake review counts, fake discount percentages, or exaggerated "무조건 사세요"-style language.
+Leave the bottom about 40% of the image as clean, mostly plain background in the same pastel color
+scheme, with no text and no busy decoration there — separate text will be added there afterward.
+Do not add any other text, watermarks, fake brand logos, fake star ratings, fake review counts, fake
+discount percentages, or exaggerated "무조건 사세요"-style language.
 """
 
 
 def render_cards_openai(post: dict, slide_texts: list[str]) -> list[Path]:
-    """OpenAI gpt-image-1 로 카드뉴스를 1장짜리 완결형 이미지로 생성 (제목+부제+핵심포인트+CTA까지
-    이미지 안에 직접 그림). 실제 상품 사진이 있으면 그 사진을 기반으로 편집(상품 실물 유지)."""
+    """OpenAI gpt-image-1 로 카드뉴스를 1장짜리 완결형 이미지로 생성. 제목+일러스트만 AI 가 그리고,
+    부제목·체크리스트·CTA 는 정확한 폰트로 직접 덧그림 (긴 문장에서 AI 오타 방지).
+    실제 상품 사진이 있으면 그 사진을 기반으로 편집(상품 실물 유지)."""
     from app import openai_image
     account_id = post["account_id"]
     style_hint = _card_style_hint(account_id)
@@ -374,12 +371,12 @@ def render_cards_openai(post: dict, slide_texts: list[str]) -> list[Path]:
             except Exception as e:
                 store.log("WARN", f"#{post['id']} 상품 이미지 다운로드 실패: {e}", account_id)
 
-    prompt = _card_prompt(title, subtitle, points, style_hint, eyebrow, cta, edit_mode=bool(product_bytes))
+    prompt = _card_prompt(title, style_hint, eyebrow, edit_mode=bool(product_bytes))
     img_bytes = openai_image.edit_image(product_bytes, prompt) if product_bytes else openai_image.generate_image(prompt)
+    img_bytes = openai_image.compose_text_panel(img_bytes, subtitle, points, cta)
     p = out_dir / "1.png"
     p.write_bytes(img_bytes)
-    paths = [p]
-    return paths
+    return [p]
 
 
 def ensure_card_images(post: dict) -> list[str] | None:
