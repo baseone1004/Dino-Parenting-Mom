@@ -29,6 +29,10 @@ def build() -> BackgroundScheduler:
     # 매일 03:30 토큰 만료 점검/갱신
     sched.add_job(service.refresh_expiring_tokens, CronTrigger(hour=3, minute=30), id="token-refresh", name="토큰 만료 점검", replace_existing=True)
 
+    # 첫 게시 전에 계정별 오늘의 인기 상품을 한 번만 준비 (API 호출 제한 보호)
+    sched.add_job(service.refresh_daily_products, CronTrigger(hour=7, minute=30), id="daily-products",
+                  name="오늘의 인기 상품 선정", replace_existing=True)
+
     # 성과 측정 (조회수/좋아요/댓글)
     ins = cfg.get("insights") or {}
     if ins.get("enabled", True) and ins.get("cron"):

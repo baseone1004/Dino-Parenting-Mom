@@ -216,22 +216,70 @@ def batch_generate(account_id: str, n: int, schedule: bool = False):
 
 
 # ---------------- 생성 → 저장/게시 ----------------
-def resolve_auto_product(account_id: str, topic: dict):
-    """topic['product'] 가 'AUTO' 면 트렌드 상품을 실제로 뽑아 product/link 를 채움 (실패하면 product 없이 진행)."""
-    if topic.get("product") != "AUTO":
-        return
+def _daily_product_key(account_id: str) -> str:
+    return f"daily_product_{account_id}_{date.today():%Y%m%d}"
+
+
+def select_daily_product(account_id: str, force: bool = False) -> dict | None:
+    """계정별 인기 상품을 하루 한 번만 조회해 API 호출 제한을 보호한다."""
     acc = account_cfg(account_id) or {}
+    if not acc.get("auto_product", False):
+        return None
+    key = _daily_product_key(account_id)
+    if not force:
+        cached = store.get_setting(key)
+        if cached:
+            try:
+                return json.loads(cached)
+            except json.JSONDecodeError:
+                pass
     source = acc.get("link_source", "coupang")
     try:
         if source == "toss" and cfg["toss"].get("use_api", False):
             item = toss.pick_trending_product()
-            topic["product"] = item.get("displayName")
-            topic["link"] = toss.link_for_item(item["tacaItemId"])
+            result = {
+                "product": item.get("displayName"),
+                "link": toss.link_for_item(item["tacaItemId"]),
+                "product_id": item.get("tacaItemId"),
+                "source": "toss",
+            }
+        elif source == "coupang" and cfg["coupang"].get("use_api", False) \
+                and env("COUPANG_ACCESS_KEY") and env("COUPANG_SECRET_KEY"):
+            item = coupang.pick_product_for_keywords(acc.get("product_keywords") or [])
+            result = {
+                "product": item.get("productName"),
+                "link": item.get("productUrl"),
+                "product_id": item.get("productId"),
+                "source": "coupang",
+            }
         else:
-            topic["product"] = None
+            return None
+        if not result.get("product") or not result.get("link"):
+            raise RuntimeError(f"상품명 또는 링크가 없는 응답: {result}")
+        store.set_setting(key, json.dumps(result, ensure_ascii=False))
+        store.log("INFO", f"오늘의 인기 상품 선정 ({source}): {result['product'][:60]}", account_id)
+        return result
     except Exception as e:
-        store.log("WARN", f"자동 상품 선정 실패, 상품 없이 진행: {e}", account_id)
-        topic["product"] = None
+        store.log("WARN", f"오늘의 인기 상품 선정 실패, 기존 주제 상품 사용: {e}", account_id)
+        return None
+
+
+def refresh_daily_products():
+    """매일 아침 실행되는 인기 상품 준비 작업."""
+    for acc in cfg["accounts"]:
+        if acc.get("enabled", True) and acc.get("auto_product", False):
+            select_daily_product(acc["id"])
+
+
+def resolve_auto_product(account_id: str, topic: dict):
+    """자동상품 계정은 오늘의 인기 상품을 주제에 주입한다. API 미설정/실패 시 기존 값을 보존한다."""
+    acc = account_cfg(account_id) or {}
+    if topic.get("product") != "AUTO" and not acc.get("auto_product", False):
+        return
+    item = select_daily_product(account_id)
+    if item:
+        topic["product"] = item["product"]
+        topic["link"] = item["link"]
 
 
 def create_post(account_id: str, publish: bool | None = None, topic: dict | None = None) -> dict:
@@ -416,7 +464,8 @@ def ensure_card_images(post: dict) -> list[str] | None:
         if paths is None:
             from app.local_cards import render_cards as render_local_cards
             cover_image_url = cover_image_for(post)
-            paths = render_local_cards(post["id"], post.get("topic") or "", slide_texts, cover_image_url)
+            paths = render_local_cards(post["id"], post.get("topic") or "", slide_texts, cover_image_url,
+                                       post["account_id"])
     except Exception as e:
         # 카드뉴스 생성 실패는 페이스북(텍스트만으로 대체 가능)까지 막으면 안 됨 — 여기서 삼키고 None 반환.
         log.exception("카드뉴스 이미지 생성 최종 실패")

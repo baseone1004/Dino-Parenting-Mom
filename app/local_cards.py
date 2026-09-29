@@ -11,6 +11,11 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps
 from app.slides_cards import CARDS_DIR
 
 WIDTH, HEIGHT = 1080, 1350
+PALETTES = {
+    "aegitem": ((255, 247, 241), (235, 125, 116), (255, 223, 208), "육아템 기록"),
+    "salimtem": ((247, 244, 235), (91, 132, 102), (220, 232, 211), "살림템 노트"),
+    "kkultem": ((246, 242, 255), (119, 92, 178), (229, 218, 250), "오늘의 꿀템"),
+}
 FONT_CANDIDATES = [
     "/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf",
     "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
@@ -35,51 +40,63 @@ def _wrap(text: str, width: int) -> str:
     return "\n".join(lines)
 
 
-def _background(image_url: str | None, index: int) -> Image.Image:
-    palette = [(255, 246, 238), (238, 248, 255), (242, 250, 241),
-               (255, 242, 247), (247, 243, 255)]
-    bg = Image.new("RGB", (WIDTH, HEIGHT), palette[index % len(palette)])
+def _background(image_url: str | None, color: tuple[int, int, int]) -> tuple[Image.Image, Image.Image | None]:
+    bg = Image.new("RGB", (WIDTH, HEIGHT), color)
+    photo = None
     if not image_url:
-        return bg
+        return bg, photo
     try:
         r = requests.get(image_url, timeout=15)
         r.raise_for_status()
         photo = Image.open(io.BytesIO(r.content)).convert("RGB")
-        photo = ImageOps.fit(photo, (WIDTH, 650), method=Image.Resampling.LANCZOS)
-        photo.putalpha(215)
-        bg = bg.convert("RGBA")
-        bg.alpha_composite(photo, (0, 0))
-        return bg.convert("RGB")
+        photo = ImageOps.fit(photo, (390, 390), method=Image.Resampling.LANCZOS)
+        return bg, photo
     except Exception:
-        return bg
+        return bg, None
 
 
 def _draw_card(title: str, body: str, index: int, total: int,
-               image_url: str | None) -> Image.Image:
-    img = _background(image_url if index == 0 else None, index)
+               image_url: str | None, account_id: str) -> Image.Image:
+    base, accent, soft, brand = PALETTES.get(account_id, ((250, 247, 242), (202, 112, 88),
+                                                          (243, 220, 207), "오늘의 생활 팁"))
+    img, photo = _background(image_url if index == 0 else None, base)
     draw = ImageDraw.Draw(img)
-    accent = [(225, 111, 95), (73, 139, 191), (70, 151, 107),
-              (204, 93, 138), (127, 100, 184)][index % 5]
+    # 배경 장식과 카드 그림자로 SNS 피드에서 밋밋하지 않게 보이도록 구성한다.
+    draw.ellipse((760, -130, 1180, 290), fill=soft)
+    draw.ellipse((-170, 1040, 250, 1460), fill=soft)
+    draw.rounded_rectangle((74, 78, WIDTH - 54, HEIGHT - 54), radius=52, fill=(221, 214, 205))
+    draw.rounded_rectangle((54, 54, WIDTH - 74, HEIGHT - 78), radius=52, fill=(255, 255, 255))
+    draw.rounded_rectangle((92, 95, 325, 158), radius=28, fill=accent)
+    draw.text((122, 111), brand, font=_font(28), fill="white")
 
-    draw.rounded_rectangle((65, 65, WIDTH - 65, HEIGHT - 65), radius=42,
-                           fill=(255, 255, 255), outline=accent, width=5)
-    draw.rounded_rectangle((100, 100, 305, 158), radius=25, fill=accent)
-    draw.text((128, 112), "오늘의 생활 팁", font=_font(27), fill="white")
+    if index == 0:
+        draw.text((92, 215), "요즘 눈에 띄는 아이템", font=_font(31), fill=accent)
+        draw.multiline_text((92, 280), _wrap(title, 13), font=_font(72), fill=(35, 35, 42), spacing=17)
+        if photo:
+            mask = Image.new("L", photo.size, 0)
+            ImageDraw.Draw(mask).rounded_rectangle((0, 0, 389, 389), radius=42, fill=255)
+            img.paste(photo, (595, 595), mask)
+            draw.rounded_rectangle((595, 595, 985, 985), radius=42, outline=accent, width=5)
+            draw.multiline_text((92, 665), _wrap(body, 9), font=_font(47), fill=(67, 67, 76), spacing=20)
+        else:
+            draw.rounded_rectangle((92, 650, 988, 1010), radius=38, fill=soft)
+            draw.multiline_text((145, 730), _wrap(body, 17), font=_font(51), fill=(55, 55, 65), spacing=24)
+    else:
+        number = f"{index:02d}"
+        draw.text((930, 185), number, font=_font(150), fill=soft, anchor="ra")
+        draw.text((92, 235), f"POINT {number}", font=_font(32), fill=accent)
+        draw.multiline_text((92, 320), _wrap(body, 14), font=_font(65), fill=(38, 38, 45), spacing=24)
+        draw.line((92, 760, 988, 760), fill=soft, width=8)
+        draw.multiline_text((92, 825), _wrap(title, 20), font=_font(34), fill=(105, 105, 115), spacing=16)
 
-    title_y = 220
-    draw.multiline_text((110, title_y), _wrap(title, 15), font=_font(66), fill=(42, 42, 46),
-                        spacing=15)
-    body_y = 720 if index == 0 and image_url else 590
-    draw.multiline_text((115, body_y), _wrap(body, 18), font=_font(48), fill=(66, 66, 72),
-                        spacing=22)
-    draw.text((110, HEIGHT - 145), "저장해두고 다시 확인하세요", font=_font(29), fill=accent)
+    draw.text((92, HEIGHT - 155), "저장해두고 다음 구매 전에 확인하세요", font=_font(28), fill=accent)
     page = f"{index + 1} / {total}"
-    draw.text((WIDTH - 110, HEIGHT - 140), page, font=_font(26), fill=(125, 125, 132), anchor="ra")
+    draw.text((WIDTH - 110, HEIGHT - 150), page, font=_font(26), fill=(125, 125, 132), anchor="ra")
     return img
 
 
 def render_cards(post_id: int, title: str, slide_texts: list[str],
-                 cover_image_url: str | None = None) -> list[Path]:
+                 cover_image_url: str | None = None, account_id: str = "") -> list[Path]:
     """표지 1장과 요약 본문 카드를 PNG로 만든다."""
     bodies = [slide_texts[0] if slide_texts else title] + list(slide_texts)
     total = len(bodies)
@@ -87,8 +104,7 @@ def render_cards(post_id: int, title: str, slide_texts: list[str],
     out_dir.mkdir(parents=True, exist_ok=True)
     paths = []
     for i, body in enumerate(bodies):
-        image = _draw_card(title if i == 0 else f"{title} · {i}", body, i, total,
-                           cover_image_url)
+        image = _draw_card(title, body, i, total, cover_image_url, account_id)
         path = out_dir / f"{i + 1}.png"
         image.save(path, "PNG", optimize=True)
         paths.append(path)

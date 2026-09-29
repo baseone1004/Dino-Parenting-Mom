@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import random
 import time
 from urllib.parse import urlencode, quote
 
@@ -80,3 +81,45 @@ def link_for_keyword(keyword: str) -> str | None:
         return deeplink(url)
     except CoupangError:
         return url
+
+
+def best_category_products(category_id: int | str, limit: int = 20,
+                           sub_id: str | None = None) -> list[dict]:
+    """쿠팡 파트너스 카테고리 베스트 상품 목록."""
+    sub_id = sub_id or cfg["coupang"].get("sub_id") or "threads"
+    data = _request(
+        "GET",
+        f"{BASE}/v1/products/bestcategories/{category_id}",
+        query={"limit": max(1, min(limit, 100)), "subId": sub_id},
+    )
+    return (data.get("data") or [])
+
+
+def pick_trending_product(category_ids: list[int] | None = None, limit: int = 20) -> dict:
+    """지정 카테고리 베스트 상위권에서 품절이 아닌 상품을 하나 선택한다."""
+    ids = list(category_ids or [])
+    random.shuffle(ids)
+    for category_id in ids:
+        items = best_category_products(category_id, limit=limit)
+        candidates = [x for x in items if not x.get("isOutOfStock") and x.get("productUrl")]
+        if candidates:
+            # 늘 1위만 반복하지 않도록 상위 10개에서 선택한다.
+            return random.choice(candidates[:10])
+    raise CoupangError(f"카테고리 {ids}에서 판매 가능한 베스트 상품을 찾지 못했습니다.")
+
+
+def pick_product_for_keywords(keywords: list[str], limit: int = 10) -> dict:
+    """계정 성격에 맞는 검색어 하나로 상위 노출 상품을 조회해 선정한다.
+
+    Search API는 시간당 10회 제한이 있으므로 호출자는 결과를 일 단위로 캐시해야 한다.
+    """
+    words = [str(x).strip() for x in keywords if str(x).strip()]
+    if not words:
+        raise CoupangError("자동 상품 검색어가 비어 있습니다.")
+    keyword = random.choice(words)
+    items = search_products(keyword, limit=limit)
+    candidates = [x for x in items if x.get("productUrl")]
+    if not candidates:
+        raise CoupangError(f"'{keyword}' 검색 결과가 비어 있습니다.")
+    # 검색 상단 관련성을 유지하면서 같은 상품 반복을 줄인다.
+    return random.choice(candidates[: min(5, len(candidates))])

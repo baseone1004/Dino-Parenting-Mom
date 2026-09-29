@@ -45,6 +45,8 @@ Start-ScheduledTask -TaskName ThreadsAutoPost
 2. **쿠팡 링크** — 두 가지 중 하나
    - (지금) 파트너스 사이트 > **링크 생성** 에서 상품 링크 만들기 → `topics.yaml` 해당 주제의 `link:` 에 붙여넣기. API 키 불필요.
    - (최종 승인 후) API 키 발급 → `.env` 의 `COUPANG_ACCESS_KEY / COUPANG_SECRET_KEY` + `config.yaml` 의 `coupang.use_api: true` → `product:` 키워드만으로 링크 자동 생성
+   - 현재 자동상품 계정 설정: 육아템은 출산·유아동 베스트, 살림템은 주방·생활용품 베스트를 매일 07:30 한 번 조회해 사용합니다. 자세한 설정은 [scripts/setup_coupang.md](scripts/setup_coupang.md).
+   - 꿀템로그는 토스쇼핑 베스트 상품을 같은 방식으로 하루 한 번 선정합니다.
 3. **내 이야기로 바꾸기** → `accounts/demo/profile.md`(나는 누구인가), `topics.yaml`(주제 20개), `rules.md`(말투 규칙)
 4. **테스트 모드로 2~3일** → 대시보드에서 초안 읽어보고 마음에 안 드는 패턴은 `rules.md` 에 금지 규칙 추가
 5. 마음에 들면 **실전으로 전환** 버튼 → 이후 스케줄 시각마다 자동 게시

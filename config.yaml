@@ -37,7 +37,7 @@ coupang:
   enabled: true
   # Open API 사용 여부. API 키는 파트너스 "최종 승인" 후에만 발급되므로, 그 전에는 false 로 두고
   # 파트너스 사이트 > 링크 생성 에서 만든 링크를 topics.yaml 의 link: 에 직접 넣으세요.
-  use_api: false
+  use_api: true
   # 파트너스 서브 ID (채널 구분용, 영문/숫자)
   sub_id: threads
   # 링크 앞에 붙는 안내 문구 (댓글에 달릴 때)
@@ -104,6 +104,9 @@ accounts:
     topic_order: sequential
     started_at: "2026-09-22"    # 이 날짜 + link_after_days 이전에는 링크 없이 경험담만
     link_after_days: 0     # 0 = 처음부터 쿠팡 링크 댓글 달기
+    link_source: coupang
+    auto_product: true
+    product_keywords: ["육아용품", "아기용품", "유아 생활용품"]
     trend_keywords: ["육아템", "아기용품", "육아 꿀팁"]
     card_font: "Gaegu"     # 카드뉴스 폰트 (구글 슬라이드 방식일 때만 사용)
     # gpt-image-1 카드뉴스 글씨체/분위기 지시문 (자연어로 자유롭게 수정 가능)
@@ -118,6 +121,9 @@ accounts:
     topic_order: sequential
     started_at: "2026-09-22"
     link_after_days: 0     # 0 = 처음부터 쿠팡 링크 댓글 달기
+    link_source: coupang
+    auto_product: true
+    product_keywords: ["생활용품", "주방용품", "살림용품"]
     trend_keywords: ["살림템", "주방용품", "생활용품 추천"]
     card_font: "Jua"     # 카드뉴스 폰트 (계정마다 다르게)
 
@@ -144,5 +150,6 @@ accounts:
     started_at: "2026-09-27"
     link_after_days: 0     # 토스 승인 완료, 링크도 채워짐 (2026-09-28) — 처음부터 링크 댓글 달기
     link_source: toss       # product: AUTO 인 주제는 토스 트렌드 상품을 자동으로 뽑아 링크 발급
+    auto_product: true       # 매일 토스 인기 상품을 하나 선정해 모든 예약 글에 자동 적용
     trend_keywords: ["가성비템", "생활꿀템", "직장인 필수템"]
     card_font: "Do Hyeon"     # 카드뉴스 폰트 (계정마다 다르게, 기존 기본값 유지)
