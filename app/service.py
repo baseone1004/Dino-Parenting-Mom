@@ -283,6 +283,10 @@ def resolve_auto_product(account_id: str, topic: dict):
         topic["product"] = item["product"]
         topic["link"] = item["link"]
         topic["image"] = item.get("image")
+        topic["title"] = f"오늘 인기 상품에서 발견한 {item['product']}"
+        topic["angle"] = ("인기 상품 목록에서 발견해 가격과 특징을 살펴본 이야기. "
+                          "직접 구매하거나 사용했다고 꾸며내지 말고 궁금한 점을 독자에게 묻기")
+        topic["auto_selected"] = True
 
 
 def create_post(account_id: str, publish: bool | None = None, topic: dict | None = None) -> dict:

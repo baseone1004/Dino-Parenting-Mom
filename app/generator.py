@@ -76,7 +76,12 @@ def build_user(topic: dict) -> str:
     if topic.get("angle"):
         s += f"관점/감정: {topic['angle']}\n"
     if topic.get("product"):
-        s += f"(이 글은 '{topic['product']}' 를 자연스럽게 경험담으로 한 번 언급합니다. 광고처럼 쓰지 마세요. 링크는 제가 따로 붙이니 넣지 마세요.)\n"
+        if topic.get("auto_selected"):
+            s += (f"(오늘의 인기 상품 API에서 '{topic['product']}'를 발견했습니다. 실제 구매·사용했다고 "
+                  "절대 꾸며내지 말고, 인기 목록에서 발견해 특징을 살펴본 솔직한 발견형 글로 쓰세요. "
+                  "확인되지 않은 효능·품질을 단정하지 마세요. 링크는 제가 따로 붙이니 넣지 마세요.)\n")
+        else:
+            s += f"(이 글은 '{topic['product']}' 를 자연스럽게 경험담으로 한 번 언급합니다. 광고처럼 쓰지 마세요. 링크는 제가 따로 붙이니 넣지 마세요.)\n"
     s += "\n위 주제로 글 한 편을 쓰세요. 본문만 출력하세요."
     return s
 
