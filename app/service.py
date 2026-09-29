@@ -259,6 +259,8 @@ def publish_facebook(post_id: int) -> bool:
     post = store.get_post(post_id)
     if not post or not cfg["facebook"].get("enabled", True):
         return False
+    if post.get("facebook_post_id"):
+        return True
     account_id = post["account_id"]
     page_id, page_token = facebook_credentials(account_id)
     if not page_id or not page_token:
@@ -393,15 +395,31 @@ def ensure_card_images(post: dict) -> list[str] | None:
         return None
     try:
         slide_texts = build_card_slides({"title": post.get("topic", "")}, ensure_formal_body(post))
+        paths = None
         if env("OPENAI_API_KEY"):
-            paths = render_cards_openai(post, slide_texts)
-        else:
+            try:
+                paths = render_cards_openai(post, slide_texts)
+            except Exception:
+                log.exception("OpenAI 카드 생성 실패, Google Slides/로컬 카드로 대체")
+                store.log("WARN", f"#{post['id']} OpenAI 카드 생성 실패, 대체 렌더러 사용", post["account_id"])
+        if paths is None and env("GOOGLE_OAUTH_CLIENT_ID") and env("GOOGLE_OAUTH_CLIENT_SECRET") \
+                and env("GOOGLE_OAUTH_REFRESH_TOKEN") and env("SLIDES_TEMPLATE_ID"):
+            try:
+                cover_image_url = cover_image_for(post)
+                font_family = (account_cfg(post["account_id"]) or {}).get("card_font")
+                paths = slides_cards.render_cards(post["id"], post.get("topic") or "", slide_texts,
+                                                  cover_image_url, font_family)
+            except Exception:
+                log.exception("Google Slides 카드 생성 실패, 로컬 카드로 대체")
+                store.log("WARN", f"#{post['id']} Google Slides 카드 생성 실패, 로컬 렌더러 사용",
+                          post["account_id"])
+        if paths is None:
+            from app.local_cards import render_cards as render_local_cards
             cover_image_url = cover_image_for(post)
-            font_family = (account_cfg(post["account_id"]) or {}).get("card_font")
-            paths = slides_cards.render_cards(post["id"], post.get("topic") or "", slide_texts, cover_image_url,
-                                              font_family)
+            paths = render_local_cards(post["id"], post.get("topic") or "", slide_texts, cover_image_url)
     except Exception as e:
         # 카드뉴스 생성 실패는 페이스북(텍스트만으로 대체 가능)까지 막으면 안 됨 — 여기서 삼키고 None 반환.
+        log.exception("카드뉴스 이미지 생성 최종 실패")
         store.log("WARN", f"#{post['id']} 카드뉴스 이미지 생성 실패 (텍스트만 게시로 대체): {e}", post["account_id"])
         return None
     image_urls = [f"{base}/media/cards/{post['id']}/{p.name}" for p in paths]
@@ -428,6 +446,8 @@ def publish_instagram(post_id: int) -> bool:
     post = store.get_post(post_id)
     if not post or not cfg["instagram"].get("enabled", True):
         return False
+    if post.get("instagram_post_id"):
+        return True
     account_id = post["account_id"]
     ig_id, page_token = instagram_credentials(account_id)
     if not ig_id or not page_token:
@@ -450,12 +470,13 @@ def publish_instagram(post_id: int) -> bool:
         return False
 
 
-def publish_post(post_id: int) -> bool:
-    """Threads 게시(기존 로직) 후, 페이스북/인스타그램도 각각 독립적으로 시도.
-    반환값은 Threads 기준(스케줄링/한도 로직이 Threads 를 기준으로 하므로)."""
+def publish_threads(post_id: int) -> bool:
+    """Threads 한 곳만 게시한다. 플랫폼별 재시도에서 다른 채널을 건드리지 않는다."""
     post = store.get_post(post_id)
     if not post:
         return False
+    if post.get("threads_post_id"):
+        return True
     account_id = post["account_id"]
     token, user_id = account_token(account_id)
     if not token:
@@ -495,18 +516,43 @@ def publish_post(post_id: int) -> bool:
         store.update_post(post_id, status=store.FAILED, error=last_err[:500], attempts=retries)
         store.log("ERROR", f"#{post_id} 게시 최종 실패", account_id)
 
-    fb_ok = publish_facebook(post_id)
-    ig_ok = publish_instagram(post_id)
-
-    acc_name = (account_cfg(account_id) or {}).get("name", account_id)
-    mark = lambda ok: "✅" if ok else "❌"
-    title = post.get("topic", "")[:40]
-    telegram_notify.send(
-        f"{mark(threads_ok)} {acc_name} 게시 결과\n"
-        f"제목: {title}\n"
-        f"Threads {mark(threads_ok)} · Facebook {mark(fb_ok)} · Instagram {mark(ig_ok)}"
-    )
     return threads_ok
+
+
+def publish_post(post_id: int) -> bool:
+    """세 플랫폼을 각각 한 번만 시도하며, 동시 실행을 DB 상태로 차단한다."""
+    original = store.get_post(post_id)
+    if not original:
+        return False
+    if not store.claim_post(post_id):
+        store.log("WARN", f"#{post_id} 이미 게시 작업 진행 중 — 중복 요청 무시", original["account_id"])
+        return False
+    try:
+        threads_ok = publish_threads(post_id)
+        fb_ok = publish_facebook(post_id)
+        ig_ok = publish_instagram(post_id)
+
+        current = store.get_post(post_id) or original
+        final_status = store.PUBLISHED if current.get("threads_post_id") else store.FAILED
+        store.update_post(post_id, status=final_status)
+
+        account_id = original["account_id"]
+        acc_name = (account_cfg(account_id) or {}).get("name", account_id)
+        mark = lambda ok: "✅" if ok else "❌"
+        title = original.get("topic", "")[:40]
+        telegram_notify.send(
+            f"{mark(threads_ok)} {acc_name} 게시 결과\n"
+            f"제목: {title}\n"
+            f"Threads {mark(threads_ok)} · Facebook {mark(fb_ok)} · Instagram {mark(ig_ok)}"
+        )
+        return threads_ok
+    except Exception:
+        log.exception("게시 오케스트레이션 실패")
+        current = store.get_post(post_id) or original
+        store.update_post(post_id, status=store.PUBLISHED if current.get("threads_post_id") else store.FAILED)
+        return False
+    finally:
+        store.release_post(post_id)
 
 
 def retry_platform(post_id: int, platform: str) -> bool:
@@ -516,7 +562,7 @@ def retry_platform(post_id: int, platform: str) -> bool:
     if platform == "instagram":
         return publish_instagram(post_id)
     if platform == "threads":
-        return publish_post(post_id)
+        return publish_threads(post_id)
     return False
 
 

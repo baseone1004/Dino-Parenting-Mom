@@ -11,7 +11,7 @@ sudo timedatectl set-timezone Asia/Seoul
 
 echo "== [2/6] 패키지 설치 (python3, pip, venv, curl, git)"
 sudo apt-get update -qq
-sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq python3 python3-venv python3-pip curl git ca-certificates
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq python3 python3-venv python3-pip curl git ca-certificates fonts-nanum
 
 echo "== [3/6] Node.js 22 + Claude Code"
 if ! command -v node >/dev/null 2>&1 || [ "$(node -v | cut -d. -f1 | tr -d v)" -lt 20 ]; then

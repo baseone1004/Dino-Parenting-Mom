@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS posts (
     replies INTEGER DEFAULT 0,
     reposts INTEGER DEFAULT 0,
     insights_at TEXT
+    ,publishing INTEGER DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_posts_acc_status ON posts(account_id, status);
 CREATE TABLE IF NOT EXISTS topic_cursor (
@@ -111,9 +112,12 @@ def init():
                          ("replies", "INTEGER DEFAULT 0"), ("reposts", "INTEGER DEFAULT 0"), ("insights_at", "TEXT"),
                          ("facebook_post_id", "TEXT"), ("facebook_error", "TEXT"),
                          ("instagram_post_id", "TEXT"), ("instagram_error", "TEXT"), ("card_image_urls", "TEXT"),
-                         ("product_url", "TEXT"), ("body_formal", "TEXT")]:
+                         ("product_url", "TEXT"), ("body_formal", "TEXT"),
+                         ("publishing", "INTEGER DEFAULT 0")]:
             if col not in cols:
                 c.execute(f"ALTER TABLE posts ADD COLUMN {col} {ddl}")
+        # 프로세스가 강제 종료된 경우 남은 잠금을 시작 시 안전하게 해제한다.
+        c.execute("UPDATE posts SET publishing=0 WHERE publishing<>0")
         acc_cols = {r["name"] for r in c.execute("PRAGMA table_info(accounts)")}
         for col, ddl in [("facebook_page_id", "TEXT"), ("facebook_page_token", "TEXT"),
                          ("facebook_page_name", "TEXT"), ("instagram_business_id", "TEXT")]:
@@ -173,6 +177,21 @@ def update_post(post_id: int, **fields):
     sets = ", ".join(f"{k}=?" for k in fields)
     with conn() as c:
         c.execute(f"UPDATE posts SET {sets} WHERE id=?", (*fields.values(), post_id))
+
+
+def claim_post(post_id: int) -> bool:
+    """한 프로세스만 게시를 시작하도록 원자적으로 상태를 선점한다."""
+    with conn() as c:
+        cur = c.execute(
+            "UPDATE posts SET publishing=1 WHERE id=? AND COALESCE(publishing,0)=0",
+            (post_id,),
+        )
+        return cur.rowcount == 1
+
+
+def release_post(post_id: int):
+    with conn() as c:
+        c.execute("UPDATE posts SET publishing=0 WHERE id=?", (post_id,))
 
 
 def delete_post(post_id: int):

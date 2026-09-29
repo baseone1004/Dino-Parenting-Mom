@@ -7,7 +7,7 @@ import threading
 from flask import Flask, Response, redirect, render_template, request, send_from_directory, url_for, flash
 
 from app import service, store, scheduler, trend, threads_api, facebook_api, config
-from app.config import cfg, enabled_accounts
+from app.config import cfg, enabled_accounts, env
 from app.slides_cards import CARDS_DIR
 
 app = Flask(__name__, template_folder="templates")
@@ -21,7 +21,7 @@ def _basic_auth():
     비로그인 상태로 가져가야 해서 예외 (그렇지 않으면 401 페이지를 이미지로 착각해 게시 실패함)."""
     if request.path == "/privacy" or request.path.startswith("/media/"):
         return None
-    pw = (cfg["dashboard"].get("password") or "").strip()
+    pw = (env("DASHBOARD_PASSWORD") or cfg["dashboard"].get("password") or "").strip()
     if not pw:
         return None
     auth = request.authorization
@@ -271,7 +271,7 @@ def insights():
 @app.post("/reload")
 def reload_config():
     config.reload()
-    flash("config.yaml 다시 읽음 (스케줄 시각 변경은 프로그램 재시작 필요)")
+    flash("config.yaml 다시 읽음 (게시 시각/계정 작업 목록 변경은 프로그램 재시작 필요)")
     return redirect(url_for("index"))
 
 

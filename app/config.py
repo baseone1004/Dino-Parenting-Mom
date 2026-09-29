@@ -39,8 +39,11 @@ cfg = load()
 
 
 def reload() -> dict:
-    global cfg
-    cfg = load()
+    # 여러 모듈이 ``from app.config import cfg`` 로 같은 dict 객체를 잡고 있다.
+    # 객체를 재할당하면 그 모듈들은 영원히 예전 설정을 보므로, 제자리에서 갱신한다.
+    new_cfg = load()
+    cfg.clear()
+    cfg.update(new_cfg)
     return cfg
 
 

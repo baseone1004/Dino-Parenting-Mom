@@ -52,6 +52,12 @@ def _headers() -> dict:
     key = env("OPENAI_API_KEY")
     if not key:
         raise OpenAIImageError(".env 의 OPENAI_API_KEY 가 없습니다.")
+    try:
+        key.encode("ascii")
+    except UnicodeEncodeError as e:
+        raise OpenAIImageError("OPENAI_API_KEY 값에 한글/비 ASCII 문자가 들어 있습니다. API 키를 다시 확인하세요.") from e
+    if not key.startswith("sk-"):
+        raise OpenAIImageError("OPENAI_API_KEY 형식이 올바르지 않습니다.")
     return {"Authorization": f"Bearer {key}"}
 
 

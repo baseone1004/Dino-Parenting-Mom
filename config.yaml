@@ -80,7 +80,8 @@ dashboard:
   host: 0.0.0.0
   port: 5000
   # 비밀번호를 넣으면 대시보드 접속 시 로그인 창이 뜸 (아이디 admin). 서버에 올릴 땐 반드시 설정.
-  password: "aegi-salim-2026"
+  # 운영 비밀번호는 Git에 남기지 말고 .env 의 DASHBOARD_PASSWORD 에 설정
+  password: ""
   # 인스타그램 카드뉴스 이미지를 공개 URL로 서빙하기 위한 기본 주소 (예: http://1.2.3.4:5000)
   # 비워두면 인스타그램 실전 게시 불가 (로컬 PC는 외부에서 이미지에 접근할 수 없으므로 클라우드 서버 배포 후 설정)
   public_base_url: "http://3.37.142.94:5000"
