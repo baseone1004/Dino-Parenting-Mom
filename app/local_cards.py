@@ -59,7 +59,8 @@ def _draw_card(title: str, body: str, index: int, total: int,
                image_url: str | None, account_id: str) -> Image.Image:
     base, accent, soft, brand = PALETTES.get(account_id, ((250, 247, 242), (202, 112, 88),
                                                           (243, 220, 207), "오늘의 생활 팁"))
-    img, photo = _background(image_url if index == 0 else None, base)
+    # 캐러셀의 모든 장에 같은 실제 상품 사진을 넣어 넘겨보는 동안 상품 맥락이 유지되게 한다.
+    img, photo = _background(image_url, base)
     draw = ImageDraw.Draw(img)
     # 배경 장식과 카드 그림자로 SNS 피드에서 밋밋하지 않게 보이도록 구성한다.
     draw.ellipse((760, -130, 1180, 290), fill=soft)
@@ -87,7 +88,17 @@ def _draw_card(title: str, body: str, index: int, total: int,
         draw.text((92, 235), f"POINT {number}", font=_font(32), fill=accent)
         draw.multiline_text((92, 320), _wrap(body, 14), font=_font(65), fill=(38, 38, 45), spacing=24)
         draw.line((92, 760, 988, 760), fill=soft, width=8)
-        draw.multiline_text((92, 825), _wrap(title, 20), font=_font(34), fill=(105, 105, 115), spacing=16)
+        if photo:
+            small = ImageOps.fit(photo, (280, 280), method=Image.Resampling.LANCZOS)
+            mask = Image.new("L", small.size, 0)
+            ImageDraw.Draw(mask).rounded_rectangle((0, 0, 279, 279), radius=34, fill=255)
+            img.paste(small, (700, 810), mask)
+            draw.rounded_rectangle((700, 810, 980, 1090), radius=34, outline=accent, width=4)
+            draw.multiline_text((92, 825), _wrap(title, 13), font=_font(34),
+                                fill=(105, 105, 115), spacing=16)
+        else:
+            draw.multiline_text((92, 825), _wrap(title, 20), font=_font(34),
+                                fill=(105, 105, 115), spacing=16)
 
     draw.text((92, HEIGHT - 155), "저장해두고 다음 구매 전에 확인하세요", font=_font(28), fill=accent)
     page = f"{index + 1} / {total}"

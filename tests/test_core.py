@@ -23,6 +23,17 @@ class CardTests(unittest.TestCase):
             self.assertEqual(len(paths), 3)
             self.assertTrue(all(p.exists() and p.stat().st_size > 1000 for p in paths))
 
+    def test_product_photo_is_requested_for_every_card(self):
+        from app import local_cards
+        with tempfile.TemporaryDirectory() as td, patch.object(local_cards, "CARDS_DIR", Path(td)), \
+             patch.object(local_cards.requests, "get", side_effect=RuntimeError("offline")), \
+             patch.object(local_cards, "_background", wraps=local_cards._background) as background:
+            local_cards.render_cards(124, "상품 사진 테스트", ["첫 번째", "두 번째"],
+                                     "https://invalid.example/image.jpg", "kkultem")
+        self.assertEqual(background.call_count, 3)
+        self.assertTrue(all(call.args[0] == "https://invalid.example/image.jpg"
+                            for call in background.call_args_list))
+
 
 class RetryTests(unittest.TestCase):
     def test_threads_retry_does_not_call_other_platforms(self):
