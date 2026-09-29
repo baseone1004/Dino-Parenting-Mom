@@ -303,23 +303,67 @@ def cover_image_for(post: dict) -> str | None:
         return None
 
 
+CARD_STYLE_BASE = (
+    "clean flat 2D illustration style (not photorealistic, not a 3D render), warm pastel color "
+    "palette (ivory, cream, light beige, soft pink, soft sky blue, soft mint, soft orange), only "
+    "1-2 accent colors, generous white space, minimal small decorative icons (stars, hearts, dots, "
+    "small flower, small shopping bag, small box, small kitchen or home icon) that never outshine "
+    "the title or product, friendly warm trustworthy everyday-life SNS content look, not an obvious "
+    "advertisement"
+)
+
+
 def _card_style_hint(account_id: str) -> str:
-    return (account_cfg(account_id) or {}).get("card_style") or (
-        "modern Korean e-commerce shopping-app promotional card design, bold colorful Korean "
-        "typography, clean rounded badges and icons, bright background, professional marketing "
-        "poster look"
-    )
+    return (account_cfg(account_id) or {}).get("card_style") or CARD_STYLE_BASE
+
+
+def _card_prompt(title: str, subtitle: str, points: list[str], style_hint: str, eyebrow: str,
+                 cta: str, edit_mode: bool) -> str:
+    points = [p for p in points if p][:3]
+    points_block = "\n".join(f"- {p}" for p in points) if points else "- (핵심 포인트 없음, 생략)"
+    eyebrow_line = f'A small eyebrow label near the very top, exactly: "{eyebrow}"\n' if eyebrow else ""
+    intro = ("Edit this product photo into a single Korean-language SNS card-news image for "
+            "Instagram and Facebook feed, vertical portrait format. Keep the product in the photo "
+            "exactly as shown, unchanged and clearly visible, with generous empty space around it "
+            "for the added design elements."
+            if edit_mode else
+            "Create a single Korean-language SNS card-news image for Instagram and Facebook feed.")
+    return f"""{intro}
+Style: {style_hint}
+Vertical portrait card, mobile-optimized, high resolution, sharp accurately-rendered Korean text.
+Generous safe margins on all sides (top/bottom/left/right) — never place text at the very edge.
+Layout, top to bottom:
+{eyebrow_line}A large bold Korean headline (wrap into 1-2 short lines naturally), exactly: "{title}" —
+make it the strongest visual element, emphasize 1-3 key words with an accent color or soft badge.
+{"Below the headline, keep the product photo large and centered, clearly recognizable." if edit_mode else
+ "Below the headline, a large centered illustration of the main everyday product or scene related "
+ "to the topic, clearly recognizable, with enough empty space around it."}
+A short supporting line below the headline, smaller than the headline, exactly: "{subtitle}"
+A small rounded info box near the bottom with short check-mark bullet points, exactly:
+{points_block}
+A short call-to-action line near (not at) the very bottom, exactly: "{cta}"
+All Korean text must render accurately and legibly, never overlapping the illustration or product,
+never cut off at the edges. Do not add any other text, watermarks, fake brand logos, fake star
+ratings, fake review counts, fake discount percentages, or exaggerated "무조건 사세요"-style language.
+"""
 
 
 def render_cards_openai(post: dict, slide_texts: list[str]) -> list[Path]:
-    """OpenAI gpt-image-1 로 카드뉴스 이미지를 통째로 생성 (문구·뱃지까지 이미지 안에 직접 그림).
-    실제 상품 사진이 있으면 그 사진을 기반으로 편집(상품 실물 유지), 없으면 새로 생성."""
+    """OpenAI gpt-image-1 로 카드뉴스를 1장짜리 완결형 이미지로 생성 (제목+부제+핵심포인트+CTA까지
+    이미지 안에 직접 그림). 실제 상품 사진이 있으면 그 사진을 기반으로 편집(상품 실물 유지)."""
     from app import openai_image
     account_id = post["account_id"]
     style_hint = _card_style_hint(account_id)
-    texts = [post.get("topic") or ""] + list(slide_texts)
+    title = post.get("topic") or ""
+    subtitle = slide_texts[0] if slide_texts else ""
+    points = list(slide_texts[1:4])
     out_dir = slides_cards.CARDS_DIR / str(post["id"])
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    is_toss = (account_cfg(account_id) or {}).get("link_source") == "toss"
+    has_link = bool(post.get("link"))
+    eyebrow = ("오늘 발견한 생활템" if is_toss else "요즘 잘 나가는 생활템") if has_link else ""
+    cta = "자세한 정보는 프로필 링크에서 확인 👆" if has_link else "저장해두고 나중에 확인하세요 📌"
 
     product_bytes = None
     if post.get("product_url"):
@@ -330,23 +374,11 @@ def render_cards_openai(post: dict, slide_texts: list[str]) -> list[Path]:
             except Exception as e:
                 store.log("WARN", f"#{post['id']} 상품 이미지 다운로드 실패: {e}", account_id)
 
-    paths = []
-    for i, text in enumerate(texts, start=1):
-        if i == 1 and product_bytes:
-            prompt = (f"Edit this product photo into a square Korean shopping promotional card "
-                     f"({style_hint}). Keep the product exactly as shown, unchanged. Add a large "
-                     f"bold Korean headline text that reads exactly: \"{text}\", plus a small "
-                     f"rounded highlight badge. No other text, no watermarks.")
-            img_bytes = openai_image.edit_image(product_bytes, prompt)
-        else:
-            prompt = (f"Create a square Korean-language promotional card image ({style_hint}). "
-                     f"The large bold Korean text must read exactly: \"{text}\". Include a related "
-                     f"everyday lifestyle photo-realistic scene as background. No other text, no "
-                     f"watermarks, no fake brand logos.")
-            img_bytes = openai_image.generate_image(prompt)
-        p = out_dir / f"{i}.png"
-        p.write_bytes(img_bytes)
-        paths.append(p)
+    prompt = _card_prompt(title, subtitle, points, style_hint, eyebrow, cta, edit_mode=bool(product_bytes))
+    img_bytes = openai_image.edit_image(product_bytes, prompt) if product_bytes else openai_image.generate_image(prompt)
+    p = out_dir / "1.png"
+    p.write_bytes(img_bytes)
+    paths = [p]
     return paths
 
 

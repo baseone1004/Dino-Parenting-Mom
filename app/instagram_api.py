@@ -49,11 +49,26 @@ def comment_on_media(media_id: str, page_token: str, message: str) -> str:
     return _call("POST", f"/{media_id}/comments", message=message, access_token=page_token)["id"]
 
 
+def create_single_media(ig_user_id: str, page_token: str, image_url: str, caption: str) -> str:
+    return _call("POST", f"/{ig_user_id}/media", image_url=image_url, caption=caption,
+                access_token=page_token)["id"]
+
+
+def publish_single_with_link(ig_user_id: str, page_token: str, image_url: str, caption: str,
+                             link_line: str | None) -> str:
+    """이미지 1장짜리 게시물. 링크가 있으면 캡션 끝에 붙임 (댓글 권한 불필요). media id 반환."""
+    full_caption = f"{caption}\n\n{link_line}" if link_line else caption
+    creation_id = create_single_media(ig_user_id, page_token, image_url, full_caption)
+    time.sleep(3)
+    return publish_container(ig_user_id, page_token, creation_id)
+
+
 def publish_carousel_with_link(ig_user_id: str, page_token: str, image_urls: list[str], caption: str,
                                link_line: str | None) -> str:
-    """카드뉴스 이미지들을 캐러셀로 게시. 링크가 있으면 캡션 끝에 붙임 (댓글 권한 불필요). media id 반환."""
-    if len(image_urls) < 2:
-        raise InstagramError("캐러셀에는 이미지가 최소 2장 필요합니다.")
+    """카드뉴스 이미지들을 캐러셀로 게시. 이미지가 1장이면 일반 단일 게시물로 대체.
+    링크가 있으면 캡션 끝에 붙임 (댓글 권한 불필요). media id 반환."""
+    if len(image_urls) == 1:
+        return publish_single_with_link(ig_user_id, page_token, image_urls[0], caption, link_line)
     children = []
     for url in image_urls:
         children.append(create_carousel_item(ig_user_id, page_token, url))
