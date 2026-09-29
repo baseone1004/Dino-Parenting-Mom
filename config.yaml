@@ -72,6 +72,8 @@ facebook:
 
 instagram:
   enabled: true
+  # 이미지 5장을 넘겨보는 캐러셀 게시물로 업로드
+  format: carousel
   # 카드뉴스 장수 (제목 1장 + 본문 요약 N-1장)
   cards_per_post: 5
 
@@ -109,6 +111,7 @@ accounts:
     product_keywords: ["육아용품", "아기용품", "유아 생활용품"]
     trend_keywords: ["육아템", "아기용품", "육아 꿀팁"]
     card_font: "Gaegu"     # 카드뉴스 폰트 (구글 슬라이드 방식일 때만 사용)
+    card_character: "assets/characters/home_woman.png"
     # gpt-image-1 카드뉴스 글씨체/분위기 지시문 (자연어로 자유롭게 수정 가능)
     card_style: >-
       cute hand-written style Korean lettering (like a warm handwritten diary font),
@@ -126,6 +129,7 @@ accounts:
     product_keywords: ["생활용품", "주방용품", "살림용품"]
     trend_keywords: ["살림템", "주방용품", "생활용품 추천"]
     card_font: "Jua"     # 카드뉴스 폰트 (계정마다 다르게)
+    card_character: "assets/characters/home_woman.png"
 
   - id: pettem                  # accounts/pettem/ 폴더
     name: "반려템"
@@ -153,3 +157,4 @@ accounts:
     auto_product: true       # 매일 토스 인기 상품을 하나 선정해 모든 예약 글에 자동 적용
     trend_keywords: ["가성비템", "생활꿀템", "직장인 필수템"]
     card_font: "Do Hyeon"     # 카드뉴스 폰트 (계정마다 다르게, 기존 기본값 유지)
+    card_character: "assets/characters/kkultem_bee.png"
