@@ -133,17 +133,53 @@ def format_lines(text: str) -> str:
     return "\n\n".join(out)
 
 
+def fallback_body(topic: dict) -> str:
+    """AI 인증/통신 장애 때도 예약 게시가 멈추지 않게 만드는 사실 기반 예비 본문."""
+    title = (topic.get("title") or "오늘 발견한 생활 아이디어").strip()
+    angle = (topic.get("angle") or "한 번 더 꼼꼼히 살펴보게 됐어").strip()
+    product = (topic.get("product") or "").strip()
+    if topic.get("auto_selected") and product:
+        middle = f"인기 상품 목록에서 {product}을 발견했어. 아직 직접 써본 건 아니라서 가격과 구성부터 차분히 비교해보는 중이야."
+    elif product and product != "AUTO":
+        middle = f"{product}도 같이 살펴봤는데, 후기 숫자만 믿기보다 내 생활에 정말 필요한지 먼저 따져보는 게 좋더라."
+    else:
+        middle = "좋아 보인다는 이유만으로 바로 고르기보다, 지금 내 생활에 정말 필요한지부터 생각해봤어."
+    return format_lines(f"{title}, 나만 이런가?\n\n{angle}.\n{middle}\n\n비슷한 고민 해본 사람 있으면 고르는 기준도 알려줘.")
+
+
+def fallback_card_slides(topic: dict, body: str, n: int) -> list[str]:
+    """AI 없이도 캐러셀에 사용할 서로 다른 짧은 문장을 만든다."""
+    title = (topic.get("title") or "오늘의 생활 아이디어").strip()
+    product = (topic.get("product") or "").strip()
+    candidates = [
+        title[:25],
+        (f"{product} 구성과 가격부터 확인" if product and product != "AUTO" else "필요한 이유부터 생각하기")[:25],
+        "후기보다 내 생활 기준으로 비교"[:25],
+        "충동구매 전 한 번 더 점검"[:25],
+        "저장해두고 천천히 결정하기"[:25],
+    ]
+    sentences = [s.strip()[:25] for s in re.split(r"[\n.!?…]+", body) if s.strip()]
+    for sentence in sentences:
+        if sentence not in candidates:
+            candidates.append(sentence)
+    return candidates[:n]
+
+
 # ---------------- 생성 ----------------
 def generate_post(account_id: str, topic: dict | None = None) -> tuple[dict, str]:
     """(topic, body) 반환. body 는 링크가 붙기 전 순수 본문."""
     topic = topic or pick_topic(account_id)
-    backend = get_backend()
-    system = build_system(account_id)
-    body = clean(backend.generate(system, build_user(topic)))
-    if cfg["ai"].get("self_review", True):
-        reviewed = clean(backend.generate(system, build_review(body, account_id)))
-        if len(reviewed) > 40:
-            body = reviewed
+    try:
+        backend = get_backend()
+        system = build_system(account_id)
+        body = clean(backend.generate(system, build_user(topic)))
+        if cfg["ai"].get("self_review", True):
+            reviewed = clean(backend.generate(system, build_review(body, account_id)))
+            if len(reviewed) > 40:
+                body = reviewed
+    except Exception as e:
+        store.log("WARN", f"AI 글 생성 실패, 예비 본문 사용: {e}", account_id)
+        body = fallback_body(topic)
     max_chars = int(cfg["posting"].get("max_chars", 420))
     if len(body) > max_chars:
         # 문단 경계에서 자르기
@@ -167,16 +203,19 @@ def to_formal_body(body: str) -> str:
 def build_card_slides(topic: dict, body: str) -> list[str]:
     """본문을 카드뉴스 본문 슬라이드(제목 제외) 텍스트로 요약해 리스트로 반환."""
     n = max(1, int((cfg.get("instagram") or {}).get("cards_per_post", 5)) - 1)
-    backend = get_backend()
-    system = "당신은 인스타그램 카드뉴스를 만드는 편집자입니다. 주어진 글을 짧고 임팩트 있는 카드 문장들로 요약합니다."
-    user = f"""[본문]
+    try:
+        backend = get_backend()
+        system = "당신은 인스타그램 카드뉴스를 만드는 편집자입니다. 주어진 글을 짧고 임팩트 있는 카드 문장들로 요약합니다."
+        user = f"""[본문]
 {body}
 
 위 내용을 인스타그램 카드뉴스 {n}장 분량으로 요약하세요.
 - 한 장당 한 줄, 25자 내외로 짧고 임팩트 있게
 - 이모지, 따옴표, 번호(1. 2. 등) 붙이지 말 것
 - 정확히 {n}줄만 출력하고 그 외 설명은 절대 쓰지 말 것"""
-    raw = backend.generate(system, user)
+        raw = backend.generate(system, user)
+    except Exception:
+        return fallback_card_slides(topic, body, n)
     lines = []
     for l in raw.splitlines():
         l = re.sub(r"^[\-\*\d\.\)\s]+", "", l.strip()).strip()

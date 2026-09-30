@@ -34,6 +34,17 @@ class CardTests(unittest.TestCase):
         self.assertTrue(all(call.args[0] == "https://invalid.example/image.jpg"
                             for call in background.call_args_list))
 
+    def test_ai_failure_uses_post_and_card_fallbacks(self):
+        from app import generator
+        topic = {"title": "오늘 발견한 생활템", "product": "수납함", "auto_selected": True}
+        with patch.object(generator, "get_backend", side_effect=RuntimeError("not logged in")), \
+             patch.object(generator.store, "log"):
+            _, body = generator.generate_post("kkultem", topic)
+            slides = generator.build_card_slides(topic, body)
+        self.assertIn("수납함", body)
+        self.assertEqual(len(slides), 4)
+        self.assertEqual(len(set(slides)), 4)
+
 
 class RetryTests(unittest.TestCase):
     def test_threads_retry_does_not_call_other_platforms(self):
