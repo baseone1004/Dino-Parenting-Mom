@@ -13,6 +13,14 @@ class ConfigReloadTests(unittest.TestCase):
         self.assertIs(config.cfg, original)
         self.assertEqual(config.cfg["posting"]["mode"], "live")
 
+    def test_fallback_backend_never_invokes_claude(self):
+        from app import ai_backend
+        with patch.dict(ai_backend.cfg, {"ai": {"backend": "fallback"}}, clear=False), \
+             patch.object(ai_backend, "HeadlessClaude") as claude:
+            with self.assertRaisesRegex(ai_backend.AIError, "내장 예비 생성"):
+                ai_backend.get_backend()
+        claude.assert_not_called()
+
 
 class CardTests(unittest.TestCase):
     def test_local_renderer_produces_carousel(self):

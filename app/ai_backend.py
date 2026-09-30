@@ -96,6 +96,8 @@ def get_backend():
     ai = cfg["ai"]
     backend = ai.get("backend", "headless")
     timeout = int(ai.get("timeout_sec", 240))
+    if backend == "fallback":
+        raise AIError("외부 AI 사용 안 함 — 내장 예비 생성 사용")
     if backend == "api":
         return AnthropicAPI(model=ai.get("model", "claude-opus-5"), timeout=timeout)
     return HeadlessClaude(model=ai.get("headless_model", "") or "", timeout=timeout)
