@@ -4,12 +4,13 @@
 # =====================================================================
 
 ai:
+  # openai : OpenAI API 키 사용 (.env 의 OPENAI_API_KEY, API 사용료 별도)
   # fallback : 외부 AI 구독/API 없이 내장 예비 문구 생성 (클라우드 예약이 중단되지 않음)
   # headless : 설치된 Claude Code를 호출 (현재 사용하지 않음)
   # api      : Anthropic API 키 사용 (현재 사용하지 않음)
-  backend: fallback
+  backend: openai
   # api 모드에서 사용할 모델
-  model: claude-opus-5
+  model: gpt-5-mini
   # headless 모드에서 사용할 모델 (비워두면 Claude Code 기본값)
   headless_model: ""
   timeout_sec: 240
@@ -73,6 +74,8 @@ facebook:
 
 instagram:
   enabled: true
+  # local: 고정 캐릭터 + 5장 캐러셀. OpenAI 키 입력만으로 이미지 방식을 바꾸지 않음.
+  image_backend: local
   # 이미지 5장을 넘겨보는 캐러셀 게시물로 업로드
   format: carousel
   # 카드뉴스 장수 (제목 1장 + 본문 요약 N-1장)

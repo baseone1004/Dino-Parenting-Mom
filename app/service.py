@@ -447,8 +447,8 @@ def render_cards_openai(post: dict, slide_texts: list[str]) -> list[Path]:
 def ensure_card_images(post: dict) -> list[str] | None:
     """이 글의 카드뉴스 이미지 URL 목록을 구해서 반환 (없으면 생성해 DB 에 캐싱).
     페이스북·인스타그램이 같은 이미지 세트를 공유 — 먼저 요청한 쪽이 생성하고 다음 쪽은 캐시를 씀.
-    public_base_url 미설정이면 None. OPENAI_API_KEY 가 있으면 gpt-image-1 로 문구까지 그려 넣고,
-    없으면 기존 구글 슬라이드(사진+텍스트 오버레이) 방식으로 대체."""
+    public_base_url 미설정이면 None. instagram.image_backend에 맞는 렌더러 사용.
+    기본 local은 기존 고정 캐릭터와 여러 장 캐러셀을 유지한다."""
     image_urls = json.loads(post["card_image_urls"]) if post.get("card_image_urls") else None
     if image_urls:
         return image_urls
@@ -458,13 +458,15 @@ def ensure_card_images(post: dict) -> list[str] | None:
     try:
         slide_texts = build_card_slides({"title": post.get("topic", "")}, ensure_formal_body(post))
         paths = None
-        if env("OPENAI_API_KEY"):
+        image_backend = cfg["instagram"].get("image_backend", "local")
+        if image_backend == "openai" and env("OPENAI_API_KEY"):
             try:
                 paths = render_cards_openai(post, slide_texts)
             except Exception:
                 log.exception("OpenAI 카드 생성 실패, Google Slides/로컬 카드로 대체")
                 store.log("WARN", f"#{post['id']} OpenAI 카드 생성 실패, 대체 렌더러 사용", post["account_id"])
-        if paths is None and env("GOOGLE_OAUTH_CLIENT_ID") and env("GOOGLE_OAUTH_CLIENT_SECRET") \
+        if paths is None and image_backend in ("slides", "openai") \
+                and env("GOOGLE_OAUTH_CLIENT_ID") and env("GOOGLE_OAUTH_CLIENT_SECRET") \
                 and env("GOOGLE_OAUTH_REFRESH_TOKEN") and env("SLIDES_TEMPLATE_ID"):
             try:
                 cover_image_url = cover_image_for(post)

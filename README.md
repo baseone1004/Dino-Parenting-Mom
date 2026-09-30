@@ -1,12 +1,12 @@
 # Threads·페이스북·인스타그램 자동 게시 + 쿠팡 파트너스
 
-주제 목록을 순환하며 Claude 가 내 말투로 글을 쓰고, 정해진 시각(09/14/20시)에 **Threads·페이스북 페이지·인스타그램**
+주제 목록을 순환하며 OpenAI GPT가 내 말투로 글을 쓰고, 설정한 시각에 **Threads·페이스북 페이지·인스타그램**
 세 곳에 동시에 자동 게시하며, 링크는 댓글로만 붙인다(본문/게시물에는 이미지 없는 순수 텍스트+링크 문구만).
-인스타그램은 이미지 없는 게시가 불가능해 Google Slides API 로 카드뉴스 이미지를 자동 생성해 캐러셀로 올린다.
+인스타그램은 고정 캐릭터를 사용하는 로컬 카드 렌더러로 5장 캐러셀을 만든다. 글 생성용 API 키를 넣어도 이미지 생성 방식은 바뀌지 않는다.
 대시보드에서 초안 확인·게시·계정 관리.
 
 ```
-주제(topics.yaml) → Claude 글 생성(rules.md + profile.md) → 자가 검수 → 쿠팡 링크 →
+주제(topics.yaml) → GPT 글 생성(rules.md + profile.md) → 자가 검수 → 제휴 링크 →
    테스트 모드: 초안 저장   /   실전 모드: Threads + Facebook + Instagram(카드뉴스) 게시  →  대시보드
 ```
 
@@ -18,8 +18,9 @@
 ```bash
 pip install -r requirements.txt
 ```
-- Claude Code 가 설치되어 있고 `claude` 명령이 되면 추가 설정 없이 동작 (기본 `ai.backend: headless`).
-- API 키로 쓰려면 `.env.example` 을 `.env` 로 복사해 `ANTHROPIC_API_KEY` 입력 후 `config.yaml` 의 `ai.backend: api`.
+- `.env`의 `OPENAI_API_KEY`를 입력하고 `config.yaml`의 `ai.backend: openai`로 실행한다. 기본 글 생성 모델은 `gpt-5-mini`다.
+- API 인증·네트워크·한도 오류가 나면 내장 예비 본문과 카드 문구로 이어간다. ChatGPT 구독과 API 사용료는 별도다.
+- 새 설치에서만 `.env.example`을 `.env`로 복사한다. 기존 `.env`와 운영 서버 토큰을 덮어쓰지 않는다.
 
 ## 2. 실행
 ```bash
@@ -74,7 +75,7 @@ app/
   scheduler.py         09/14/20시 슬롯, 토큰 갱신, 글감 수집 잡
   service.py           생성→저장/게시, 한도, 링크, 토큰 관리
   generator.py         주제 선택, 프롬프트, 자가 검수
-  ai_backend.py        Claude Code 헤드리스 / Anthropic API
+  ai_backend.py        OpenAI Responses API / 기존 Claude 호환 백엔드
   threads_api.py       Threads 게시·토큰
   facebook_api.py      Facebook 페이지 게시·댓글
   instagram_api.py     Instagram 캐러셀 게시·댓글
@@ -110,10 +111,9 @@ logs/app.log           실행 로그
    ```powershell
    .\scripts\deploy.ps1 -Server <서버IP> -Key "$HOME\Downloads\LightsailDefaultKey-ap-northeast-2.pem" -Setup
    ```
-4. 서버에 접속해 Claude Code 로그인 (구독 사용, 한 번만):
+4. 서버 `.env`에도 `OPENAI_API_KEY`를 설정하고 서비스를 시작한다 (Claude 로그인 불필요):
    ```powershell
    ssh -i "$HOME\Downloads\LightsailDefaultKey-ap-northeast-2.pem" ubuntu@<서버IP>
-   claude          # URL 열어 로그인 → 코드 붙여넣기 → 종료
    sudo systemctl start threads-auto
    ```
 5. **내 PC 의 프로그램은 끄기** (둘 다 켜져 있으면 두 번 게시됨)
